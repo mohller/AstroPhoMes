@@ -541,9 +541,10 @@ def multiplicity_table(mother):
 
 
 def main():
-	pass
+	
 	# resmul = residual_multiplicities()
 	print resmul.keys()
+	print multiplicity_table(1407)
 
 if __name__ == '__main__':
 	main()
