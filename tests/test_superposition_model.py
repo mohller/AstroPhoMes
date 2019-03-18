@@ -72,5 +72,13 @@ class Test_SuperpositionModel(unittest.TestCase):
         self.assertTrue(np.all(cs == cs_val))
 
 
+class Test_EmpiricalModel(Test_SuperpositionModel):
+    def __init__(self, *args, **kwargs):
+        super(Test_EmpiricalModel, self).__init__(*args, **kwargs)
+        
+        # creating class instance for testing
+        self.pm = EmpiricalModel()
+
+
 if __name__ == '__main__':
     unittest.main()
