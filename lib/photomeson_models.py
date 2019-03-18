@@ -9,7 +9,7 @@ sys.path.append('../')
 sys.path.append('../utils')
 from config import *
 from utils import *
-
+from scaling_models_from_data import med as alpha_med
 
 class GeneralPhotomesonModel(object):
     """Base class for all photomeson models which enhance the 
@@ -138,7 +138,7 @@ class GeneralPhotomesonModel(object):
         from pickle import load as pickle_load
         from scipy.interpolate import UnivariateSpline
 
-        uf_file = join(config['data_dir'], 'universal-spline.pkl')
+        uf_file = join(global_path, 'data/universal-spline.pkl')
         with open(uf_file, 'r') as f:
             tck = pickle_load(f)
 
@@ -150,7 +150,7 @@ class GeneralPhotomesonModel(object):
         from pickle import load as pickle_load
         from scipy.interpolate import UnivariateSpline
 
-        uf_file = join(config['data_dir'], 'pion_spline.pkl')
+        uf_file = join(global_path, 'data/pion_spline.pkl')
         with open(uf_file, 'r') as f:
             tck = pickle_load(f)
 
@@ -263,15 +263,13 @@ class EmpiricalModel(GeneralPhotomesonModel):
     calculated with the empirical functions. 
     """
     def __init__(self):
-        SuperpositionModel.__init__(self)
+        GeneralPhotomesonModel.__init__(self, alpha=alpha_med,
+                                        multiplicity_source=True)
 
 
     def _fill_multiplicity(self, *args, **kwargs):
-        """Populates all tabs (_nonel_tab, _incl_tab, _incl_diff_tab) so they can work
-        as with _optimize_indices() method of the base class (CrossSectionBase).
+        """Loads the data and creates the multiplicity table
         """
-        import sys
-        sys.path.append('../../../../Leonel') 
         from phenom_relations import multiplicity_table
 
         self._nonel_tab = {100:(), 101:()}
@@ -282,9 +280,10 @@ class EmpiricalModel(GeneralPhotomesonModel):
                 
         new_multiplicity = {}
         for mom in sorted(spec_data.keys()):
-            if (mom < 101) or isinstance(mom, str) or (spec_data[mom]['lifetime'] < config['tau_dec_threshold']):
+            if (mom < 101) or isinstance(mom, str) or \
+                (spec_data[mom]['lifetime'] < config['tau_dec_threshold']):
                 continue                          
-            # Am, Zm, _ = get_AZN(mom)
+            
             mults = multiplicity_table(mom)
             dau_list, csincl_list = zip(*((k, v) for k, v in mults.iteritems()))
             
