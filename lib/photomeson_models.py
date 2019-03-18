@@ -177,9 +177,19 @@ class GeneralPhotomesonModel(object):
             (numpy.array, numpy.array): energy, cross section
         """
 
-        _, Z, N = get_AZN(species)
+        A, Z, N = get_AZN(species)
 
         cgrid = Z * self.cs_proton_grid + N * self.cs_neutron_grid
+        
+        if self.univ_spl:
+            e_max = 1.2 # energy at which universal function ends
+            e_scale = .3  # energy at which mass scaling starts
+            egrid = self.egrid
+
+            cs_univ = self.univ_spl(egrid)
+            cgrid[egrid <= e_max] = A * self.univ_spl(egrid[egrid <= e_max])
+            cgrid[egrid > e_scale] = (cgrid * A**self.alpha(egrid))[egrid > e_scale]/A
+
         return self.egrid, cgrid
 
     def cs_incl(self, species, product):
@@ -208,6 +218,9 @@ class GeneralPhotomesonModel(object):
         else:
             cgrid = np.zeros_like(self.egrid)
         
+        if (species, product) in self.multiplicity:
+            cgrid *= self.multiplicity[species, product]
+
         return self.egrid, cgrid
 
     def cs_incl_diff(self, species, product):
@@ -222,7 +235,7 @@ class GeneralPhotomesonModel(object):
             (numpy.array, numpy.array): energy, cross section
         """
 
-        _, Z, N = get_AZN(species)
+        A, Z, N = get_AZN(species)
 
         csec_diff = np.zeros_like(self.redist_proton[2].T)
 
@@ -233,6 +246,28 @@ class GeneralPhotomesonModel(object):
         if product in self.redist_neutron:
             cgrid = N * self.cs_neutron_grid
             csec_diff += self.redist_neutron[product].T * cgrid
+
+        # if model is beyond superposition, include multiplicity table
+        if (species, product) in self.multiplicity:
+            xw = self.xwidths[-1]  # accounting for bin width
+            _, cs_nonel = self.nonel(species)
+            csec_diff[-1, :] += \
+                self.multiplicity[species, product] * cs_nonel / xw
+        elif (product in [2, 3, 4]) and self.pion_spl:
+            spm = SophiaSuperposition()
+
+            csec_diff *= float(A)**(-1/3.)  # ... rescaling SpM to A^2/3
+            _, cs_incl = spm.incl(species, product)
+
+            cspi = 1e-30*self.pion_spl(egrid * 1e3)*A**(2./3)
+
+            _, M_pi = spm.multiplicities(species, product)
+            _, M_pi0 = spm.multiplicities(species, 4)
+
+            renorm = M_pi / M_pi0 * cspi / cs_incl
+
+            csec_diff = self.fade(csec_diff, csec_diff*renorm, range(32)) # hardcoded, found manually
+            csec_diff = self.fade(csec_diff*renorm, csec_diff, range(55, 105)) # hardcoded, found manually
 
         return self.egrid, csec_diff
 
@@ -273,7 +308,9 @@ class EmpiricalModel(GeneralPhotomesonModel):
         from phenom_relations import multiplicity_table
 
         self._nonel_tab = {100:(), 101:()}
-        
+        self._incl_tab = {}
+        self._incl_diff_tab = {}
+
         for mom in self._nonel_tab:
             for dau in [2, 3, 4, 100, 101]:
                 self._incl_diff_tab[mom, dau] = ()
@@ -281,7 +318,7 @@ class EmpiricalModel(GeneralPhotomesonModel):
         new_multiplicity = {}
         for mom in sorted(spec_data.keys()):
             if (mom < 101) or isinstance(mom, str) or \
-                (spec_data[mom]['lifetime'] < config['tau_dec_threshold']):
+                (spec_data[mom]['lifetime'] < tau_dec_threshold):
                 continue                          
             
             mults = multiplicity_table(mom)
@@ -289,7 +326,7 @@ class EmpiricalModel(GeneralPhotomesonModel):
             
             self._nonel_tab[mom] = ()
             for dau in [2, 3, 4, 100, 101]:
-                self._incl_diff_tab[mom, dau] = SophiaSuperposition.incl_diff(self, mom, dau)[1]
+                self._incl_diff_tab[mom, dau] = ()
             
             for dau, mult in mults.iteritems():
                 new_multiplicity[mom, dau] = mult
