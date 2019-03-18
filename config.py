@@ -1,6 +1,7 @@
 """ Configuration settings
 """
 import pickle
+import numpy as np
 import os.path as path
 
 
@@ -12,3 +13,5 @@ spec_data = pickle.load(
 debug_level = 3 # defines the information output of the code
 
 print_module = False
+
+tau_dec_threshold = 0  # lifetime threshold to consider a species
