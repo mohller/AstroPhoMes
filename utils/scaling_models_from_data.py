@@ -26,7 +26,7 @@ def low(x):
         else:
             y.append(sigm(xi, 160, .231, .05, .66))
             
-    return y
+    return np.array(y)
 
 def med(x):
     emid = np.linspace(600, 700, 21)
@@ -45,7 +45,7 @@ def med(x):
         else:
             y.append(sigm(xi, 430, .2, .01, .66))
 
-    return y
+    return np.array(y)
 
 def hie(x):
     y = []
@@ -58,7 +58,7 @@ def hie(x):
         else:
             y.append(sigm(xi, 430, .4555, .001, .66))
 
-    return y
+    return np.array(y)
 
 def hieer(x):
     y = []
@@ -71,7 +71,7 @@ def hieer(x):
         else:
             y.append(sigm(xi, -80, .1, .01, .91))
 
-    return y
+    return np.array(y)
 
 
 A_eff_low = lambda A, x: float(A)**np.array(low(x))
