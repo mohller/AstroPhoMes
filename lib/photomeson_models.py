@@ -89,8 +89,8 @@ class GeneralPhotomesonModel(object):
                 'inclusive cross sections of pions produced from nuclei.')
             self.pion_spl = None
         else:
-            info(2, 'Using data-based-spline function for the inclusive \
-                cross sections of pions produced from nuclei.')
+            info(2, 'Using data-based-spline function for the inclusive ' + \
+                'cross sections of pions produced from nuclei.')
             self._load_pion_function()
 
             def fade(cs1, cs2, indices=None):
@@ -366,7 +366,7 @@ class EmpiricalModel(GeneralPhotomesonModel):
         self.multiplicity = new_multiplicity
         
 
-class ResidualDecayModel(object):
+class ResidualDecayModel(GeneralPhotomesonModel):
     """Implements the Residual Decay Model as in article.
 
     The _fill_multiplicity function is redefined to use the multiplicities of
@@ -382,8 +382,10 @@ class ResidualDecayModel(object):
         mutiplicities are obtained from the disintegration model. Here the 
         disintegration model is a table obtained from sampling TALYS.
     """
-    def __init__(self, arg):
-        super(ResidualDecayModel, self).__init__()
+    def __init__(self, **kwargs):
+        self._nonel_tab = {}
+        self._incl_tab = {}
+        self._incl_diff_tab = {}
 
         # defining excitation function
         if 'excitation_function' not in kwargs:
@@ -402,55 +404,71 @@ class ResidualDecayModel(object):
             info(2, 'Custom function chosen for residual excitation energy.')
             self.Eexc = kwargs['excitation_function']
 
+        GeneralPhotomesonModel.__init__(self, alpha=alpha_med,
+                                        multiplicity_source=True)
+
         
-    def _fill_multiplicity(self, model_prefix):
+    def _fill_multiplicity(self):
         """Crates a dictionary with multiplicity values
         """
         info(9, 'Creating multiplicity table from base photodisintegration model.')
-        photodis_model = TabulatedCrossSection(model_prefix)
-
-        # populate nuclei list (already reduced by decay time)...
-        self._nonel_tab = photodis_model._nonel_tab
-        for mom in self._nonel_tab:
-            for dau in [2, 3, 4]:
-                self._incl_diff_tab[mom, dau] = ()
+        photodis_model_egrid = np.load(join(global_path, 
+                         'data/CRP2_TALYS_egrid.npy'))
         
         for dau in [2, 3, 4, 100, 101]:
             self._incl_diff_tab[100, dau] = ()
             self._incl_diff_tab[101, dau] = ()
 
+        reactions = {}
+        _incl_tab = {}
+        for row in np.load(join(global_path, 'data/CRP2_TALYS_incl_i_j.npy')):
+            spec, prod = int(row[0]), int(row[1])
+            _incl_tab[spec, prod] = row[2:]
+
+            if spec in reactions:
+                reactions[spec].append((spec, prod))
+            else:
+                reactions[spec] = [(spec, prod)]
+
+        _nonel_tab = {}
+        for row in np.load(join(global_path, 'data/CRP2_TALYS_nonel.npy')):
+            spec = int(row[0])
+            _nonel_tab[spec] = row[1:] 
+
+            for pion in [2, 3, 4]:
+                self._incl_diff_tab[spec, pion] = ()
+        
         # populate multiplicities...
-        multiplicity = {}
+        multiplicity_table = {}
 
-
-        for mom in self._nonel_tab:
+        for mom in _nonel_tab:
             Am, Zm, Nm = get_AZN(mom)
-            idx = self.Eexc(Am, photodis_model.egrid)
+            idx = self.Eexc(Am, photodis_model_egrid)
 
             new_channels = []
-            if mom - 101 in photodis_model.reactions:
-                new_channels += [d for _, d in
-                                 photodis_model.reactions[mom - 101]]
+            if mom - 101 in reactions:
+                new_channels += [d for _, d in reactions[mom - 101]]
 
-            if mom - 100 in photodis_model.reactions:
-                new_channels += [d for _, d in
-                                 photodis_model.reactions[mom - 100]]
+            if mom - 100 in reactions:
+                new_channels += [d for _, d in reactions[mom - 100]]
 
             new_channels = set(new_channels)  # avoid repetitions
 
             for dau in new_channels:
                 multip_value = 0
 
-                if mom - 100 in photodis_model.reactions:
-                    if (mom - 100, dau) in photodis_model.reactions[mom - 100]:
-                        multip_value += float(Nm) / Am * photodis_model.multiplicities(mom - 100, dau)[1][idx]
+                if mom - 100 in reactions:
+                    if (mom - 100, dau) in reactions[mom - 100]:
+                        pdis_multiplicity = (_incl_tab[mom - 100, dau]/_nonel_tab[mom - 100])[idx]
+                        multip_value += float(Nm) / Am * pdis_multiplicity
 
-                if mom - 101 in photodis_model.reactions:
-                    if (mom - 101, dau) in photodis_model.reactions[mom - 101]:
-                        multip_value += float(Zm) / Am * photodis_model.multiplicities(mom - 101, dau)[1][idx]
+                if mom - 101 in reactions:
+                    if (mom - 101, dau) in reactions[mom - 101]:
+                        pdis_multiplicity = (_incl_tab[mom - 101, dau]/_nonel_tab[mom - 101])[idx]
+                        multip_value += float(Zm) / Am * pdis_multiplicity
 
                 if (multip_value > 0):
-                    multiplicity[mom, dau] = multip_value
+                    multiplicity_table[mom, dau] = multip_value
 
                     # preparing tabs to work with _optimize_and_generate_index
                     if dau > 101:
@@ -461,13 +479,13 @@ class ResidualDecayModel(object):
                     if mom not in self._nonel_tab:
                         self._nonel_tab[mom] = ()
 
-        # correcting nuclei woth only one path
-        for ch in multiplicity:
+        # correcting nuclei with only one path
+        for ch in multiplicity_table:
             Am, Zm, Nm = get_AZN(ch[0])
-            if ch[0] - 100 not in photodis_model.reactions:
-                multiplicity[ch] *= float(Am) / Zm
-            if ch[0] - 101 not in photodis_model.reactions:
-                multiplicity[ch] *= float(Am) / Nm
+            if ch[0] - 100 not in reactions:
+                multiplicity_table[ch] *= float(Am) / Zm
+            if ch[0] - 101 not in reactions:
+                multiplicity_table[ch] *= float(Am) / Nm
 
-        self.multiplicity = multiplicity
+        self.multiplicity = multiplicity_table
 

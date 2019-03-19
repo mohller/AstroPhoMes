@@ -133,12 +133,39 @@ class Test_EmpiricalModel(Test_SuperpositionModel):
         """
             Test that nonel works
         """
+        # cs_proton = self.pm.cs_proton_grid
+        # cs_neutron = self.pm.cs_neutron_grid
+        
+        # e, cs = self.pm.cs_nonel(1406)
+        # cs_mix = 6 * cs_proton + 8 * cs_neutron
+        # cs_mix *= 14.**(self.pm.alpha(self.pm.egrid) - 1)
+
+        # egrid = self.pm.egrid
+        # e_max = 2 # energy at which universal function ends
+        # self.assertTrue(np.all(cs[egrid > e_max] == cs_mix[egrid > e_max]))
+        pass
+        
+    def test_incl_nuclei(self):
         cs_proton = self.pm.cs_proton_grid
         cs_neutron = self.pm.cs_neutron_grid
+
+        e, cs = self.pm.cs_incl(502, 402)
+        cs_val = 3 * cs_neutron
+        self.assertTrue(np.all(cs != cs_val))
+
+    def test_incl_diff_nuclei(self):
+        pass
+
+
+class Test_ResidualDecayModel(Test_SuperpositionModel):
+    def __init__(self, *args, **kwargs):
+        super(Test_ResidualDecayModel, self).__init__(*args, **kwargs)
         
-        e, cs = self.pm.cs_nonel(1406)
-        cs_mix = 6 * cs_proton + 8 * cs_neutron
-        self.assertTrue(np.all(cs != cs_mix))
+        # creating class instance for testing
+        self.pm = ResidualDecayModel()
+
+    def test_nonel_nuclei(self):
+        pass
 
     def test_incl_nuclei(self):
         pass
