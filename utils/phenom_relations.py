@@ -436,7 +436,8 @@ def spallation_multiplicities(mother):
 	            else:
 	                incl_tab[dau] = cs_frag * resmul[spalled_id][dau]
 	for dau in incl_tab:
-		incl_tab[dau] /= cs_sum  # all spallation cross section should match total spallation cross section
+		# all spallation cross section should match total spallation cross section
+		incl_tab[dau] /= np.where(cs_sum == 0, np.inf, cs_sum)
 
 	return incl_tab
 
