@@ -49,6 +49,8 @@ class GeneralPhotomesonModel(object):
     def __init__(self, **kwargs):
         object.__init__(self)
 
+        self.multiplicity = {}
+
         self._load_SOPHIA_data()
 
         if ('universal_function' in kwargs) and \
@@ -166,6 +168,16 @@ class GeneralPhotomesonModel(object):
 
         return 0.5 * (self.xbins[1:] + self.xbins[:-1])
 
+    @property
+    def xwidths(self):
+        """Returns bin widths of the grid in x.
+
+        Returns:
+            (numpy.array): x widths
+        """
+
+        return self.xbins[1:] - self.xbins[:-1]
+
     def cs_nonel(self, species):
         r"""Returns the non-elastic cross section.
 
@@ -235,39 +247,57 @@ class GeneralPhotomesonModel(object):
             (numpy.array, numpy.array): energy, cross section
         """
 
-        A, Z, N = get_AZN(species)
-
-        csec_diff = np.zeros_like(self.redist_proton[2].T)
-
-        if product in self.redist_proton:
-            cgrid = Z * self.cs_proton_grid
+        if species == 100:
+            cgrid = self.cs_neutron_grid
+            csec_diff = self.redist_neutron[product].T * cgrid
+        elif species == 101:
+            cgrid = self.cs_proton_grid
             csec_diff = self.redist_proton[product].T * cgrid
+        elif species > 101:
+        # include redistributed particles in multiplicity table 
+        # and pion renormalizations if pion_spl is defined
+            A, Z, N = get_AZN(species)
+            def spm_incl_diff(product):
+                csec_diff = np.zeros_like(self.redist_proton[2].T)
 
-        if product in self.redist_neutron:
-            cgrid = N * self.cs_neutron_grid
-            csec_diff += self.redist_neutron[product].T * cgrid
+                if product in self.redist_proton:
+                    cgrid = Z * self.cs_proton_grid
+                    csec_diff += self.redist_proton[product].T * cgrid
 
-        # if model is beyond superposition, include multiplicity table
-        if (species, product) in self.multiplicity:
-            xw = self.xwidths[-1]  # accounting for bin width
-            _, cs_nonel = self.nonel(species)
-            csec_diff[-1, :] += \
-                self.multiplicity[species, product] * cs_nonel / xw
-        elif (product in [2, 3, 4]) and self.pion_spl:
-            spm = SophiaSuperposition()
+                if product in self.redist_neutron:
+                    cgrid = N * self.cs_neutron_grid
+                    csec_diff += self.redist_neutron[product].T * cgrid
 
-            csec_diff *= float(A)**(-1/3.)  # ... rescaling SpM to A^2/3
-            _, cs_incl = spm.incl(species, product)
+                return csec_diff
 
-            cspi = 1e-30*self.pion_spl(egrid * 1e3)*A**(2./3)
+            csec_diff = spm_incl_diff(product)
 
-            _, M_pi = spm.multiplicities(species, product)
-            _, M_pi0 = spm.multiplicities(species, 4)
+            if (species, product) in self.multiplicity:  # only p and n
+                xw = self.xwidths[-1]  # only on last x bin
+                _, cs_nonel = self.cs_nonel(species)
+                csec_diff[-1, :] += \
+                    self.multiplicity[species, product] * cs_nonel / xw
+            elif self.pion_spl:  # only pions (product in [2, 3, 4])
+                from scipy.integrate import trapz
+                csec_diff = spm_incl_diff(product)
 
-            renorm = M_pi / M_pi0 * cspi / cs_incl
+                csec_diff_ref = spm_incl_diff(4)
+                cs_incl_ref = trapz(csec_diff_ref, x=self.xcenters,
+                              dx=bin_widths(self.xbins), axis=0)
 
-            csec_diff = self.fade(csec_diff, csec_diff*renorm, range(32)) # hardcoded, found manually
-            csec_diff = self.fade(csec_diff*renorm, csec_diff, range(55, 105)) # hardcoded, found manually
+                cs_incl_prod = trapz(csec_diff, x=self.xcenters,
+                              dx=bin_widths(self.xbins), axis=0)
+
+                csec_diff *= float(A)**(-1/3.)  # ... rescaling SpM to A^2/3
+                cs_incl_prod = trapz(csec_diff, x=self.xcenters,
+                              dx=bin_widths(self.xbins), axis=0)
+
+                cspi = 1e-30*self.pion_spl(self.egrid * 1e3)*A**(2./3)
+
+                renorm = cs_incl_prod / cs_incl_ref * cspi / cs_incl
+
+                csec_diff = self.fade(csec_diff, csec_diff*renorm, range(32)) # hardcoded, found manually
+                csec_diff = self.fade(csec_diff*renorm, csec_diff, range(55, 105)) # hardcoded, found manually
 
         return self.egrid, csec_diff
 
@@ -317,7 +347,7 @@ class EmpiricalModel(GeneralPhotomesonModel):
                 
         new_multiplicity = {}
         for mom in sorted(spec_data.keys()):
-            if (mom < 101) or isinstance(mom, str) or \
+            if (mom <= 101) or isinstance(mom, str) or \
                 (spec_data[mom]['lifetime'] < tau_dec_threshold):
                 continue                          
             

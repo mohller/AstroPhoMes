@@ -43,7 +43,7 @@ class Test_SuperpositionModel(unittest.TestCase):
             Test that nonel works
         """
         from scipy.integrate import trapz
-        
+
         cs_proton = self.pm.cs_proton_grid
         cs_neutron = self.pm.cs_neutron_grid
 
@@ -55,14 +55,15 @@ class Test_SuperpositionModel(unittest.TestCase):
             [redist_n, redist_p]):
             for prod in [2, 3, 4, 100, 101]:
                 e, cs = self.pm.cs_incl(spec, prod)
-                cs_val_diff = cs_tot * redist[prod].T
+                cs_val_diff = redist[prod].T * cs_tot
 
                 cs_val = trapz(cs_val_diff, x=self.pm.xcenters,
                               dx=bin_widths(self.pm.xbins), axis=0)
+                if not np.all(cs == cs_val):
+                    print spec, prod
+                self.assertTrue(np.all(cs == cs_val))
 
-                self.assertTrue(np.all(cs == cs_val))        
-
-    def test_incl(self):
+    def test_incl_nuclei(self):
         """
             Test that nonel works
         """
@@ -99,7 +100,7 @@ class Test_SuperpositionModel(unittest.TestCase):
                 cs_val = cs_tot * redist[prod].T
                 self.assertTrue(np.all(cs == cs_val))        
 
-    def test_incl_diff_nuclei(self):
+    def test_incl_diff_nuclei(self) :
         """
             Test that nonel works
         """
@@ -121,23 +122,29 @@ class Test_SuperpositionModel(unittest.TestCase):
         self.assertTrue(np.all(cs == cs_val))
 
 
-# class Test_EmpiricalModel(Test_SuperpositionModel):
-#     def __init__(self, *args, **kwargs):
-#         super(Test_EmpiricalModel, self).__init__(*args, **kwargs)
+class Test_EmpiricalModel(Test_SuperpositionModel):
+    def __init__(self, *args, **kwargs):
+        super(Test_EmpiricalModel, self).__init__(*args, **kwargs)
         
-#         # creating class instance for testing
-#         self.pm = EmpiricalModel()
+        # creating class instance for testing
+        self.pm = EmpiricalModel()
 
-#     def test_nonel_nuclei(self):
-#         """
-#             Test that nonel works
-#         """
-#         cs_proton = self.pm.cs_proton_grid
-#         cs_neutron = self.pm.cs_neutron_grid
+    def test_nonel_nuclei(self):
+        """
+            Test that nonel works
+        """
+        cs_proton = self.pm.cs_proton_grid
+        cs_neutron = self.pm.cs_neutron_grid
         
-#         e, cs = self.pm.cs_nonel(1406)
-#         cs_mix = 6 * cs_proton + 8 * cs_neutron
-#         self.assertTrue(np.all(cs != cs_mix))
+        e, cs = self.pm.cs_nonel(1406)
+        cs_mix = 6 * cs_proton + 8 * cs_neutron
+        self.assertTrue(np.all(cs != cs_mix))
+
+    def test_incl_nuclei(self):
+        pass
+
+    def test_incl_diff_nuclei(self):
+        pass
 
 
 if __name__ == '__main__':
