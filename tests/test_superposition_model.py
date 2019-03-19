@@ -14,7 +14,7 @@ class Test_SuperpositionModel(unittest.TestCase):
         # creating class instance for testing
         self.pm = SuperpositionModel()
 
-    def test_nonel(self):
+    def test_nonel_nucleons(self):
         """
             Test that nonel works
         """
@@ -27,9 +27,35 @@ class Test_SuperpositionModel(unittest.TestCase):
         e, cs = self.pm.cs_nonel(100)
         self.assertTrue(np.all(cs == cs_neutron))
 
+    def test_nonel_nuclei(self):
+        """
+            Test that nonel works
+        """
+        cs_proton = self.pm.cs_proton_grid
+        cs_neutron = self.pm.cs_neutron_grid
+        
         e, cs = self.pm.cs_nonel(1406)
         cs_mix = 6 * cs_proton + 8 * cs_neutron
         self.assertTrue(np.all(cs == cs_mix))
+
+    def test_incl_nucleons(self):
+        """
+            Test that nonel works
+        """
+        cs_proton = self.pm.cs_proton_grid
+        cs_neutron = self.pm.cs_neutron_grid
+
+        e, cs = self.pm.cs_incl(502, 402)
+        cs_val = 3 * cs_neutron
+        self.assertTrue(np.all(cs == cs_val))        
+                
+        e, cs = self.pm.cs_incl(704, 603)
+        cs_val = 4 * cs_proton
+        self.assertTrue(np.all(cs == cs_val))
+        
+        e, cs = self.pm.cs_incl(1407, 402)
+        cs_val = np.zeros_like(cs)
+        self.assertTrue(np.all(cs == cs_val))        
 
     def test_incl(self):
         """
@@ -78,6 +104,17 @@ class Test_EmpiricalModel(Test_SuperpositionModel):
         
         # creating class instance for testing
         self.pm = EmpiricalModel()
+
+    def test_nonel_nuclei(self):
+        """
+            Test that nonel works
+        """
+        cs_proton = self.pm.cs_proton_grid
+        cs_neutron = self.pm.cs_neutron_grid
+        
+        e, cs = self.pm.cs_nonel(1406)
+        cs_mix = 6 * cs_proton + 8 * cs_neutron
+        self.assertTrue(np.all(cs != cs_mix))
 
 
 if __name__ == '__main__':

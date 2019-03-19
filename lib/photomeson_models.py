@@ -181,7 +181,7 @@ class GeneralPhotomesonModel(object):
 
         cgrid = Z * self.cs_proton_grid + N * self.cs_neutron_grid
         
-        if self.univ_spl:
+        if (A > 1) and self.univ_spl:
             e_max = 1.2 # energy at which universal function ends
             e_scale = .3  # energy at which mass scaling starts
             egrid = self.egrid
