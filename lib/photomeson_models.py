@@ -198,9 +198,9 @@ class GeneralPhotomesonModel(object):
             e_scale = .3  # energy at which mass scaling starts
             egrid = self.egrid
 
-            cs_univ = self.univ_spl(egrid)
-            cgrid[egrid <= e_max] = A * self.univ_spl(egrid[egrid <= e_max])
-            cgrid[egrid > e_scale] = (cgrid * A**self.alpha(egrid))[egrid > e_scale]/A
+            cs_univ = 1e30 * self.univ_spl(egrid)
+            cgrid[egrid <= e_max] = A * cs_univ[egrid <= e_max]
+            cgrid[egrid > e_scale] = (cgrid * A**self.alpha(egrid))[egrid > e_scale] / A
 
         return self.egrid, cgrid
 

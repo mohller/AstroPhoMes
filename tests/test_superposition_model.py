@@ -133,17 +133,20 @@ class Test_EmpiricalModel(Test_SuperpositionModel):
         """
             Test that nonel works
         """
-        # cs_proton = self.pm.cs_proton_grid
-        # cs_neutron = self.pm.cs_neutron_grid
+        cs_proton = self.pm.cs_proton_grid
+        cs_neutron = self.pm.cs_neutron_grid
         
-        # e, cs = self.pm.cs_nonel(1406)
+        e, cs = self.pm.cs_nonel(1406)
         # cs_mix = 6 * cs_proton + 8 * cs_neutron
-        # cs_mix *= 14.**(self.pm.alpha(self.pm.egrid) - 1)
 
-        # egrid = self.pm.egrid
-        # e_max = 2 # energy at which universal function ends
-        # self.assertTrue(np.all(cs[egrid > e_max] == cs_mix[egrid > e_max]))
-        pass
+        egrid = self.pm.egrid
+        cs_mix = 1e30 * self.pm.univ_spl(egrid)  # universal function
+        cs_mix *= 14.**self.pm.alpha(self.pm.egrid)  # mass scaling
+
+        idcs = np.argwhere((egrid > .3) * (egrid < 1.2))  # universal function range
+        
+        self.assertTrue(np.all(abs(cs[idcs] - cs_mix[idcs]) < 1e-10))
+
         
     def test_incl_nuclei(self):
         cs_proton = self.pm.cs_proton_grid
