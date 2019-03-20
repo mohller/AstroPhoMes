@@ -49,6 +49,10 @@ class GeneralPhotomesonModel(object):
     def __init__(self, **kwargs):
         object.__init__(self)
 
+        self.nonel_idcs = []
+        self.incl_idcs = []
+        self.incl_diff_idcs = []
+
         self.multiplicity = {}
 
         self._load_SOPHIA_data()
@@ -117,6 +121,8 @@ class GeneralPhotomesonModel(object):
             kwargs['multiplicity_source'] == True:
             self._fill_multiplicity()
 
+        self._fill_idcs()
+
     def _load_SOPHIA_data(self):
         """Loading data sampled from SOPHIA
 
@@ -157,7 +163,32 @@ class GeneralPhotomesonModel(object):
             tck = pickle_load(f)
 
         self.pion_spl = UnivariateSpline._from_tck(tck)
-        
+    
+    def _fill_idcs(self):
+        for mom in sorted(spec_data.keys()):
+            if (mom <= 101) or isinstance(mom, str) or \
+                (spec_data[mom]['lifetime'] < tau_dec_threshold):
+                continue
+            
+            if mom not in self.nonel_idcs:
+                self.nonel_idcs.append(mom)
+
+            for dau in (d for m,d in self.multiplicity if m == mom):
+                if (mom, dau) not in self.incl_diff_idcs:
+                    self.incl_idcs.append((mom, dau))
+
+            for dau in [2, 3, 4, 100, 101]:
+                if (mom, dau) not in self.incl_diff_idcs:
+                    self.incl_diff_idcs.append((mom, dau))
+
+        if self.incl_idcs == []:
+            for mom in self.nonel_idcs:
+                _, Z, N = get_AZN(mom)
+                if N > 1:
+                    self.incl_idcs.append((mom, mom - 100))
+                if Z > 1:
+                    self.incl_idcs.append((mom, mom - 101))
+
     @property
     def xcenters(self):
         """Returns centers of the grid in x.
