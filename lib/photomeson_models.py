@@ -289,7 +289,7 @@ class GeneralPhotomesonModel(object):
                               dx=bin_widths(self.xbins), axis=0)
 
                 csec_diff *= float(A)**(-1/3.)  # ... rescaling SpM to A^2/3
-                cs_incl_prod = trapz(csec_diff, x=self.xcenters,
+                cs_incl = trapz(csec_diff, x=self.xcenters,
                               dx=bin_widths(self.xbins), axis=0)
 
                 cspi = 1e-30*self.pion_spl(self.egrid * 1e3)*A**(2./3)
@@ -459,12 +459,16 @@ class ResidualDecayModel(GeneralPhotomesonModel):
 
                 if mom - 100 in reactions:
                     if (mom - 100, dau) in reactions[mom - 100]:
-                        pdis_multiplicity = (_incl_tab[mom - 100, dau]/_nonel_tab[mom - 100])[idx]
+                        pdis_multiplicity = (_incl_tab[mom - 100, dau] / \
+                            np.where(_nonel_tab[mom - 100] == 0, np.inf, 
+                                _nonel_tab[mom - 100]))[idx]
                         multip_value += float(Nm) / Am * pdis_multiplicity
 
                 if mom - 101 in reactions:
                     if (mom - 101, dau) in reactions[mom - 101]:
-                        pdis_multiplicity = (_incl_tab[mom - 101, dau]/_nonel_tab[mom - 101])[idx]
+                        pdis_multiplicity = (_incl_tab[mom - 101, dau] / \
+                            np.where(_nonel_tab[mom - 101] == 0, np.inf, 
+                                _nonel_tab[mom - 101]))[idx]
                         multip_value += float(Zm) / Am * pdis_multiplicity
 
                 if (multip_value > 0):
