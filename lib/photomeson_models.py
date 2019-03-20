@@ -288,12 +288,12 @@ class GeneralPhotomesonModel(object):
                 cs_incl = trapz(csec_diff, x=self.xcenters,
                               dx=bin_widths(self.xbins), axis=0)
 
-                cspi = 1e-30*self.pion_spl(self.egrid * 1e3)*A**(2./3)
+                cspi = self.pion_spl(self.egrid * 1e3)*A**(2./3)
 
                 renorm = cs_incl_prod / cs_incl_ref * cspi / cs_incl
-
-                csec_diff = self.fade(csec_diff, csec_diff*renorm, range(32)) # hardcoded, found manually
-                csec_diff = self.fade(csec_diff*renorm, csec_diff, range(55, 105)) # hardcoded, found manually
+                csec_diff_renormed = csec_diff * renorm
+                csec_diff_renormed = self.fade(csec_diff, csec_diff_renormed, range(32)) # hardcoded, found manually
+                csec_diff = self.fade(csec_diff_renormed, csec_diff, range(55, 105)) # hardcoded, found manually
 
         return self.egrid, csec_diff
 
