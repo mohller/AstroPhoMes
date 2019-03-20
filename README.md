@@ -1,7 +1,8 @@
 # AstroPhoMes
 A python library implementing astrophysical photomeson models for usage in UHECR sources simulations and related physical scenarios
 
-
+### For details and usage...
+access the example files in the examples folder.
 
 ### Particle ID convention:
 - 2: pi plus
