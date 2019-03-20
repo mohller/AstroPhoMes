@@ -413,7 +413,7 @@ class ResidualDecayModel(GeneralPhotomesonModel):
         """
         info(9, 'Creating multiplicity table from base photodisintegration model.')
         photodis_model_egrid = np.load(join(global_path, 
-                         'data/CRP2_TALYS_egrid.npy'))
+                         'data/CRP2_TALYS_egrid_reduced.npy'))
         
         for dau in [2, 3, 4, 100, 101]:
             self._incl_diff_tab[100, dau] = ()
@@ -421,7 +421,7 @@ class ResidualDecayModel(GeneralPhotomesonModel):
 
         reactions = {}
         _incl_tab = {}
-        for row in np.load(join(global_path, 'data/CRP2_TALYS_incl_i_j.npy')):
+        for row in np.load(join(global_path, 'data/CRP2_TALYS_incl_i_j_reduced.npy')):
             spec, prod = int(row[0]), int(row[1])
             _incl_tab[spec, prod] = row[2:]
 
@@ -431,7 +431,7 @@ class ResidualDecayModel(GeneralPhotomesonModel):
                 reactions[spec] = [(spec, prod)]
 
         _nonel_tab = {}
-        for row in np.load(join(global_path, 'data/CRP2_TALYS_nonel.npy')):
+        for row in np.load(join(global_path, 'data/CRP2_TALYS_nonel_reduced.npy')):
             spec = int(row[0])
             _nonel_tab[spec] = row[1:] 
 
