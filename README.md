@@ -6,7 +6,7 @@ This repository contains tools used for calculating photo-nuclear interactions.
 The code provides cross sections for the interaction between photons and nuclei for astrophysical problems.
 This is of interest for modelling Ultra-High Energy Cosmic Ray sources and transport.
 
-## Usage
+## Usage:
 For details see the publication [arXiv](), and for usage refer to the examples folder.
 
 The lib folder contains the main classes which implement the photomeson models.
