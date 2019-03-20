@@ -1,3 +1,6 @@
+"""Automated tests for the photmeson model classes
+"""
+
 import unittest
 
 import numpy as np
@@ -148,7 +151,6 @@ class Test_EmpiricalModel(Test_SuperpositionModel):
         
         self.assertTrue(np.all(abs(cs[idcs] - cs_mix[idcs]) < 1e-10))
 
-        
     def test_incl_nuclei(self):
         cs_proton = self.pm.cs_proton_grid
         cs_neutron = self.pm.cs_neutron_grid
