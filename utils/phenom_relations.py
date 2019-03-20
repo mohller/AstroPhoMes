@@ -10,7 +10,6 @@ import os.path as path
 from numpy import exp, sum, array, inf, linspace
 import itertools
 import sys
-# sys.path.append('../PriNCe/branches/L_branch/')
 sys.path.append('../')
 from config import *
 from utils import get_AZN

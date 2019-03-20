@@ -223,15 +223,11 @@ class GeneralPhotomesonModel(object):
             egr_incl, cs_diff = self.cs_incl_diff(species, product)
             cgrid = trapz(cs_diff, x=self.xcenters,
                           dx=bin_widths(self.xbins), axis=0)
-        elif product == species - 101:
-            cgrid = Z * self.cs_proton_grid
-        elif product == species - 100:
-            cgrid = N * self.cs_neutron_grid
+        elif (species, product) in self.multiplicity:
+            _, cgrid = self.cs_nonel(species)
+            cgrid *= self.multiplicity[species, product]
         else:
             cgrid = np.zeros_like(self.egrid)
-        
-        if (species, product) in self.multiplicity:
-            cgrid *= self.multiplicity[species, product]
 
         return self.egrid, cgrid
 
@@ -318,7 +314,27 @@ class SuperpositionModel(GeneralPhotomesonModel):
 
         GeneralPhotomesonModel.__init__(self, universal_function=False,
                                         alpha=alpha_SM,
-                                        pion_function=False)
+                                        pion_function=False,
+                                        multiplicity_source=True)
+
+    def _fill_multiplicity(self):
+        """Adds multiplicity of non distributed products
+        
+        For products in A-1 fills the multiplicity to be used
+        by method cs_incl 
+        """
+        multiplicity_table = {}
+
+        for nucleus in spec_data:
+            if (nucleus < 200) or (type(nucleus) is str):
+                continue
+            
+            A, Z, N = get_AZN(nucleus)
+
+            multiplicity_table[nucleus, nucleus - 100] = N/float(A)
+            multiplicity_table[nucleus, nucleus - 101] = Z/float(A)
+
+        self.multiplicity = multiplicity_table
 
 
 class EmpiricalModel(GeneralPhotomesonModel):
@@ -330,7 +346,6 @@ class EmpiricalModel(GeneralPhotomesonModel):
     def __init__(self):
         GeneralPhotomesonModel.__init__(self, alpha=alpha_med,
                                         multiplicity_source=True)
-
 
     def _fill_multiplicity(self, *args, **kwargs):
         """Loads the data and creates the multiplicity table

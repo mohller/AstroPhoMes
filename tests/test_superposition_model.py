@@ -71,11 +71,12 @@ class Test_SuperpositionModel(unittest.TestCase):
         cs_neutron = self.pm.cs_neutron_grid
 
         e, cs = self.pm.cs_incl(502, 402)
-        cs_val = 3 * cs_neutron
-        self.assertTrue(np.all(cs == cs_val))        
+        cs_val = 3./5*(3 * cs_neutron + 2 * cs_proton)
+
+        self.assertTrue(np.all(cs == cs_val))
                 
         e, cs = self.pm.cs_incl(704, 603)
-        cs_val = 4 * cs_proton
+        cs_val = 4./7*(3 * cs_neutron + 4 * cs_proton)
         self.assertTrue(np.all(cs == cs_val))
         
         e, cs = self.pm.cs_incl(1407, 402)
