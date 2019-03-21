@@ -4,7 +4,7 @@ A python library implementing astrophysical photomeson models for usage in UHECR
 ## Description:
 This repository contains tools used for calculating photo-nuclear interactions.
 The code provides cross sections for the interaction between photons and nuclei for astrophysical problems.
-This is of interest for modelling Ultra-High Energy Cosmic Ray sources and transport.
+This is of interest for modeling Ultra-High Energy Cosmic Ray sources and transport.
 
 ## Usage:
 For details see the publication [arXiv](), and for usage refer to the examples folder.
@@ -26,13 +26,7 @@ The particle identification follows the convention below
 	- 1407: Nitrogen 14 (Z=7, A=14)
 
 ## Dependencies:
-- os
-- sys
-- numpy
-- utils
-- scipy
-- pickle
-- inspect
-- unittest
-- itertools
-- collections
+It has been tested with the following versions (it should also work with newer versions):
+- python 2.7.15
+- numpy 1.15.1
+- scipy 1.1.0
