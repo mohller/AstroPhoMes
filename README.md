@@ -42,7 +42,7 @@ Additionally this code uses interaction tables generated with [SOPHIA](https://w
 
 Research works using this code should cite the following references:
  - [L. Morejon *et al* arxiv 2019]()
- - ["AstroPhoMes" (DOI:10.5281/zenodo.2601882)]()
+ - [L. Morejon "AstroPhoMes: Photomeson models ..." 2019 (DOI:10.5281/zenodo.2600177)](https://doi.org/10.5281/zenodo.2600177)
 
 ### Aknowledgement:
 This project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement no. 646623.
