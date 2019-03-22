@@ -8,13 +8,13 @@ sections for the Empirical photomeson model.
 
 import os.path as path
 from numpy import exp, sum, array, inf, linspace
+from collections import Counter
 import itertools
 import sys
 sys.path.append('../')
 from config import *
-from utils import get_AZN
-from collections import Counter
-
+sys.path.append(global_path)
+from utils.utils import get_AZN
 
 # listing functions to create species tables
 def list_species_by_mass(Amax, tau=inf):

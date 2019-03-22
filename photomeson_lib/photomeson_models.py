@@ -6,10 +6,10 @@ import sys
 from os.path import join
 
 sys.path.append('../')
-sys.path.append('../utils')
 from config import *
-from utils import *
-from scaling_models_from_data import med as alpha_med
+sys.path.append(global_path)
+from utils.utils import *
+from utils.scaling_models_from_data import med as alpha_med
 
 class GeneralPhotomesonModel(object):
     """Base class for all photomeson models which enhance the 

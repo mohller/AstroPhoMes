@@ -5,9 +5,10 @@ import unittest
 
 import numpy as np
 import sys
-sys.path.append('../lib/')
-
-from photomeson_models import *
+sys.path.append('../')
+from config import *
+sys.path.append(global_path)
+from photomeson_lib.photomeson_models import *
     
 
 class Test_SuperpositionModel(unittest.TestCase):
