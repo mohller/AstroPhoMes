@@ -160,8 +160,29 @@ class Test_EmpiricalModel(Test_SuperpositionModel):
         cs_val = 3 * cs_neutron
         self.assertTrue(np.all(cs != cs_val))
 
-    def test_incl_diff_nuclei(self):
-        pass
+    # def test_incl_diff_nuclei(self):
+    #     pass
+    def test_incl_diff_nuclei(self) :
+        """
+            Test that nonel works
+        """
+        cs_proton = self.pm.cs_proton_grid
+        cs_neutron = self.pm.cs_neutron_grid
+    
+        e, cs = self.pm.cs_incl_diff(1407, 100)
+        cs_val = 7 * cs_neutron * self.pm.redist_neutron[100].T + \
+                 7 * cs_proton * self.pm.redist_proton[100].T
+        self.assertTrue(np.any(cs != cs_val))
+
+        e, cs = self.pm.cs_incl(4018, 101)
+        cs_val = np.zeros_like(self.pm.cs_proton_grid)
+
+        self.assertTrue(np.all(cs.shape == cs_val.shape))
+
+        e, cs = self.pm.cs_incl_diff(1407, 402)
+        cs_val = np.zeros_like(self.pm.redist_proton[2].T)
+        self.assertTrue(np.all(cs == cs_val))
+
 
 
 class Test_ResidualDecayModel(Test_SuperpositionModel):

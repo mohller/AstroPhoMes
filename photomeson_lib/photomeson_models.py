@@ -10,6 +10,7 @@ from config import *
 sys.path.append(global_path)
 from utils.utils import *
 from utils.scaling_models_from_data import med as alpha_med
+from photomeson_lib.phenom_relations import *
 
 class GeneralPhotomesonModel(object):
     """Base class for all photomeson models which enhance the 
@@ -273,6 +274,7 @@ class GeneralPhotomesonModel(object):
            Returns:
             (numpy.array, numpy.array): energy, cross section
         """
+        from scipy.integrate import trapz
 
         if species == 100:
             cgrid = self.cs_neutron_grid
@@ -280,7 +282,7 @@ class GeneralPhotomesonModel(object):
         elif species == 101:
             cgrid = self.cs_proton_grid
             csec_diff = self.redist_proton[product].T * cgrid
-        elif species > 101:
+        elif (species > 101) and (product <= 101):
         # include redistributed particles in multiplicity table 
         # and pion renormalizations if pion_spl is defined
             A, Z, N = get_AZN(species)
@@ -302,10 +304,18 @@ class GeneralPhotomesonModel(object):
             if (species, product) in self.multiplicity:  # only p and n
                 xw = self.xwidths[-1]  # only on last x bin
                 _, cs_nonel = self.cs_nonel(species)
+
+                if (species, product) in self._incl_diff_tab:
+                    if self._incl_diff_tab[species, product]:
+                        cs_incl = trapz(csec_diff, x=self.xcenters,
+                            dx=bin_widths(self.xbins), axis=0)
+                        csec_diff *= \
+                            self._incl_diff_tab[species, product] / cs_incl
+
                 csec_diff[-1, :] += \
                     self.multiplicity[species, product] * cs_nonel / xw
+
             elif self.pion_spl:  # only pions (product in [2, 3, 4])
-                from scipy.integrate import trapz
                 csec_diff = spm_incl_diff(product)
 
                 csec_diff_ref = spm_incl_diff(4)
@@ -325,6 +335,8 @@ class GeneralPhotomesonModel(object):
                 csec_diff_renormed = csec_diff * renorm
                 csec_diff_renormed = self.fade(csec_diff, csec_diff_renormed, range(32)) # hardcoded, found manually
                 csec_diff = self.fade(csec_diff_renormed, csec_diff, range(55, 105)) # hardcoded, found manually
+        else:
+            csec_diff = np.zeros_like(self.redist_neutron[2].T)
 
         return self.egrid, csec_diff
 
@@ -401,8 +413,12 @@ class EmpiricalModel(GeneralPhotomesonModel):
             dau_list, csincl_list = zip(*((k, v) for k, v in mults.iteritems()))
             
             self._nonel_tab[mom] = ()
-            for dau in [2, 3, 4, 100, 101]:
+            for dau in [2, 3, 4]:
                 self._incl_diff_tab[mom, dau] = ()
+            
+            A, Z, _ = get_AZN(mom)
+            self._incl_diff_tab[mom, 100] = cs_gn(A) / cs_tot(A, False)
+            self._incl_diff_tab[mom, 101] = cs_gp(Z) / cs_tot(A, False)
             
             for dau, mult in mults.iteritems():
                 new_multiplicity[mom, dau] = mult
@@ -523,6 +539,10 @@ class ResidualDecayModel(GeneralPhotomesonModel):
                     # preparing tabs to work with _optimize_and_generate_index
                     if dau > 101:
                         self._incl_tab[mom, dau] = ()
+                    elif dau == 100:
+                        self._incl_diff_tab[mom, 100] = Nm / Am
+                    elif dau == 101:
+                        self._incl_diff_tab[mom, 101] = Zm / Am
                     else:
                         self._incl_diff_tab[mom, dau] = ()
 

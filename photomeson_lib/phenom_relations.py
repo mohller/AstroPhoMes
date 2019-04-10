@@ -289,7 +289,7 @@ def cs_gSp_all_inA(A):
     return max(cs_vals)
 
 
-def cs_tot(A):
+def cs_tot(A, sumed=True):
 	'''Determines the norm for the empirical formulas
 	such that the addition of inclusive cross sections
 	does not fluctuate with A. Renormalization value 
@@ -297,15 +297,18 @@ def cs_tot(A):
 	total empirical cross section per nucleon over 
 	a range of A in A=4-55.
 	'''
-	csp = cs_gp(A=A)
-	cspi = cs_gpi(A)
-	csn = cs_gn(A)
-	csxn = cs_gxn_all(A)
-	csSpal = cs_gSp_all_inA(A)
-	
-	cstot = csp + cspi + csn + csxn + csSpal
+	if sumed:
+		csp = cs_gp(A=A)
+		cspi = cs_gpi(A)
+		csn = cs_gn(A)
+		csxn = cs_gxn_all(A)
+		csSpal = cs_gSp_all_inA(A)
+		
+		cstot = csp + cspi + csn + csxn + csSpal
+	else:
+		cstot = .28 * A
 
-	return cstot * cs_norm[A]
+	return cstot
 
 
 #### inclusive cross sections derived from relations above, and related functions
