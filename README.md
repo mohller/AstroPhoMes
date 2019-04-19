@@ -10,7 +10,7 @@ This is of interest for modeling Ultra-High Energy Cosmic Ray sources and transp
 
 ## Usage:
 
-For details see the publication [arXiv](), and for usage refer to the examples folder.
+For details see the publication [arXiv](https://arxiv.org/abs/1904.07999), and for usage refer to the examples folder.
 
 The lib folder contains the main classes which implement the photomeson models.
 
@@ -41,8 +41,11 @@ Additionally this code uses interaction tables generated with [SOPHIA](https://w
 ## How to cite the code:
 
 Research works using this code should cite the following references:
- - [L. Morejon *et al* arxiv 2019]()
+ - [L. Morejon *et al.* 2019](https://arxiv.org/abs/1904.07999)
  - [L. Morejon "AstroPhoMes: Photomeson models ..." 2019 (DOI:10.5281/zenodo.2600177)](https://doi.org/10.5281/zenodo.2600177)
+ - [J. Heinze, A. Fedynitch *et al.* 2019](https://arxiv.org/abs/1901.03338)
 
-### Aknowledgement:
+### Aknowledgements:
+Parts if this code are based on the code PriNCe from Jonas Heinze and Anatoli Fedynitch [link](https://arxiv.org/abs/1901.03338)
+
 This project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement no. 646623.
