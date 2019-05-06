@@ -46,6 +46,6 @@ Research works using this code should cite the following references:
  - [J. Heinze, A. Fedynitch *et al.* 2019](https://arxiv.org/abs/1901.03338)
 
 ### Aknowledgements:
-Parts if this code are based on the code PriNCe from Jonas Heinze and Anatoli Fedynitch [link](https://arxiv.org/abs/1901.03338)
+Portions of this code are based on the code PriNCe from Jonas Heinze and Anatoli Fedynitch [link](https://arxiv.org/abs/1901.03338)
 
 This project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement no. 646623.
