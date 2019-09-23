@@ -88,3 +88,22 @@ def bin_widths(bin_edges):
     edg = np.array(bin_edges)
 
     return np.abs(edg[1:, ...] - edg[:-1, ...])
+
+
+def sigm(x, shift=0., gap=1, speed=1, base=0., rising=False):
+    """Models a general sigmoid with multiple parameters.
+
+    Parameters:
+    -----------
+    x: x values, argument
+    shift: middle point, inflection point
+    gap: maximal value - minimal value
+    speed: controls the speed of the change, 
+    base: minimal value
+    """
+    sigmoid = 1. /(1 + np.exp(- speed * (x - shift)))
+    
+    if rising:
+        return gap * sigmoid + base
+    else:
+        return gap*( 1. - sigmoid) + base

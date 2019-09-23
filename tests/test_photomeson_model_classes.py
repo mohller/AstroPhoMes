@@ -1,22 +1,19 @@
 """Automated tests for the photmeson model classes
 """
 
-import unittest
-
 import numpy as np
 import sys
+import unittest
 sys.path.append('../')
 from config import *
-sys.path.append(global_path)
 from photomeson_lib.photomeson_models import *
-    
 
-class Test_SuperpositionModel(unittest.TestCase):
+class Test_SingleParticleModel(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(Test_SuperpositionModel, self).__init__(*args, **kwargs)
+        super(Test_SingleParticleModel, self).__init__(*args, **kwargs)
         
         # creating class instance for testing
-        self.pm = SuperpositionModel()
+        self.pm = SingleParticleModel()
 
     def test_nonel_nucleons(self):
         """
@@ -127,7 +124,7 @@ class Test_SuperpositionModel(unittest.TestCase):
         self.assertTrue(np.all(cs == cs_val))
 
 
-class Test_EmpiricalModel(Test_SuperpositionModel):
+class Test_EmpiricalModel(Test_SingleParticleModel):
     def __init__(self, *args, **kwargs):
         super(Test_EmpiricalModel, self).__init__(*args, **kwargs)
         
@@ -160,15 +157,20 @@ class Test_EmpiricalModel(Test_SuperpositionModel):
         cs_val = 3 * cs_neutron
         self.assertTrue(np.all(cs != cs_val))
 
-    # def test_incl_diff_nuclei(self):
-    #     pass
     def test_incl_diff_nuclei(self) :
         """
-            Test that nonel works
+            Test that inclusive differential cross section work
         """
         cs_proton = self.pm.cs_proton_grid
         cs_neutron = self.pm.cs_neutron_grid
     
+        e, cs = self.pm.cs_incl_diff(1407, 3)
+        cs_val = 7 * cs_neutron * self.pm.redist_neutron[3].T + \
+                 7 * cs_proton * self.pm.redist_proton[3].T
+        self.assertTrue(np.any(cs != cs_val))
+        self.assertTrue(np.any(cs[-50:] == cs_val[-50:]))
+        self.assertTrue(np.any(cs[:-50] != cs_val[-50]))
+
         e, cs = self.pm.cs_incl_diff(1407, 100)
         cs_val = 7 * cs_neutron * self.pm.redist_neutron[100].T + \
                  7 * cs_proton * self.pm.redist_proton[100].T
@@ -184,8 +186,7 @@ class Test_EmpiricalModel(Test_SuperpositionModel):
         self.assertTrue(np.all(cs == cs_val))
 
 
-
-class Test_ResidualDecayModel(Test_SuperpositionModel):
+class Test_ResidualDecayModel(Test_SingleParticleModel):
     def __init__(self, *args, **kwargs):
         super(Test_ResidualDecayModel, self).__init__(*args, **kwargs)
         

@@ -1,22 +1,21 @@
-"""Module implementing relations from paper
+"""Module implementing empirical relations from paper
 
-Functions implementing formulas from paper 
+Functions that implement the formulas from 
 Ref = http://stacks.iop.org/1402-4896/49/i=3/a=004
-and others, to calculate the inclusive cross
-sections for the Empirical photomeson model.
+and others. This modeule calculates the inclusive cross
+sections for the Empirical Photomeson Model.
 """
 
-import os.path as path
-from numpy import exp, sum, array, inf, linspace
-from collections import Counter
 import itertools
+import os.path as path
+from collections import Counter
+from numpy import exp, sum, array, inf, linspace, where
 import sys
 sys.path.append('../')
 from config import *
-sys.path.append(global_path)
 from utils.utils import get_AZN
 
-# listing functions to create species tables
+# listing functions to create tables of nuclear species 
 def list_species_by_mass(Amax, tau=inf):
 	'''Returns a dictionary with the species stable enough
 	to be produced in spallation.
@@ -109,13 +108,18 @@ def residual_multiplicities():
 
 
 # local lookup tables for efficiency
-# species_by_mass = list_species_by_mass(56, config['tau_dec_threshold'])
-species_by_mass = list_species_by_mass(56, 0.)
-# resmul = residual_multiplicities()
-# with open('/afs/ifh.de/group/that/work-lm/NEUCOS/Leonel/small_frags_relative_yields.pkl', 'r') as f:
-with open(path.join(global_path, 'data/small_frags_relative_yields.pkl'), 'r') as f:
-	# it's faster to pickle.load a precomputed resmul
-    resmul = pickle.load(f)
+species_by_mass = list_species_by_mass(56, tau_dec_threshold)
+if path.exists(path.join(global_path, 'data/small_frags_relative_yields.pkl')):
+	print('Found data file with multiplicities. Loeading it now...')
+	with open(path.join(global_path, 'data/small_frags_relative_yields.pkl'), 'r') as f:
+		# it is faster to load a precomputed resmul than recalculating using 
+		# residual_multiplicities() as below
+		resmul = pickle.load(f)
+else:
+	print('Did not find data file with multiplicities. Loeading it now...')
+	resmul = residual_multiplicities()
+	with open(path.join(global_path, 'data/small_frags_relative_yields.pkl'), 'w') as f:
+		resmul = pickle.dump(f)
 
 
 #### empirical relations from Ref...
@@ -296,6 +300,12 @@ def cs_tot(A, sumed=True):
 	depends on the mass and is set to the mean of the
 	total empirical cross section per nucleon over 
 	a range of A in A=4-55.
+
+	Arguments:
+		A {int}         -- Number of nucleons of the target nucleus
+		sumed {boolean} -- If True, returns the total cross section as the sum
+		                   of all the different components, otherwise it 
+						   provides the average value according to the formula.
 	'''
 	if sumed:
 		csp = cs_gp(A=A)
@@ -439,7 +449,7 @@ def spallation_multiplicities(mother):
 	                incl_tab[dau] = cs_frag * resmul[spalled_id][dau]
 	for dau in incl_tab:
 		# all spallation cross section should match total spallation cross section
-		incl_tab[dau] /= np.where(cs_sum == 0, np.inf, cs_sum)
+		incl_tab[dau] /= where(cs_sum == 0, inf, cs_sum)
 
 	return incl_tab
 

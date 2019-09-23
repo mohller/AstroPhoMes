@@ -7,47 +7,50 @@ from os.path import join
 
 sys.path.append('../')
 from config import *
-sys.path.append(global_path)
 from utils.utils import *
 from utils.scaling_models_from_data import med as alpha_med
-from photomeson_lib.phenom_relations import *
+from phenom_relations import *
 
 class GeneralPhotomesonModel(object):
     """Base class for all photomeson models which enhance the 
     Superposition Model
-       
-    Parameters
-    ----------
-    universal_function : bool, optional, default: True
-        This parameter controls if the universal function (spline fit to data)
-        should be used for describing the nonelastic cross section for nuclei
-        in the low energy range. When False, the Superposition Model 
-        assumptions are used.
-
-    alpha: callable, default: alpha_med
-        The function describing de dependence of the mass scaling with energy.
-        The function alpha(er) should receive as parameter er the energies in
-        GeV units and return the mass scaling exponent.
-        By default , T
-        he Superposition Model corresponds to a function returning 1 
-        regardless of the energy.
-
-    pion_function : bool, optional, default: True
-        This parameter controls if the pion function (spline fit to data) 
-        should be used for describing the inclusive differential cross 
-        sections for pion production off nuclei in the low energy range. When
-        False, the Superposition Model assumptions are used.
-    
-    multiplicity_source : bool, default: False
-        Determines if the multiplicities for producing intermediate fragments
-        should be loaded. This keyword is intended for models that include 
-        this feature. The Superposition Model does not include it and is the 
-        default option. When the keyword is given, the method 
-        _fill_multiplicity() is called, and should be implemented in the class
-        from which it will be called.
     """
 
     def __init__(self, **kwargs):
+        """This function defines the type of photomeson model by loading the 
+        relevant data and functions based on the keyword arguments. 
+        The default model (call without arguments) returns the published version
+        of the photomeson model (Empirical Model)        
+                
+        Parameters
+        ----------
+        universal_function : bool, optional, default: True
+            This parameter controls if the universal function (spline fit to data)
+            should be used for describing the nonelastic cross section for nuclei
+            in the low energy range. When False, the Superposition Model 
+            assumptions are used.
+
+        alpha: callable, default: alpha_med
+            The function describing de dependence of the mass scaling with energy.
+            The function alpha should receive as parameter the energies in
+            GeV units and return the mass scaling exponent.
+            By default the Superposition Model corresponds to a function returning 1 
+            regardless of the energy.
+
+        pion_function : bool, optional, default: True
+            This parameter controls if the pion function (spline fit to data) 
+            should be used for describing the inclusive differential cross 
+            sections for pion production off nuclei in the low energy range. When
+            False, the Superposition Model assumptions are used.
+        
+        multiplicity_source : bool, default: False
+            Determines if the multiplicities for producing intermediate fragments
+            should be loaded. This keyword is intended for models that include 
+            this feature. The Superposition Model does not include it and is the 
+            default option. When the keyword is given, the method 
+            _fill_multiplicity() is called, and should be implemented in the class
+            from which it will be called.
+        """
         object.__init__(self)
 
         self.nonel_idcs = []
@@ -69,20 +72,7 @@ class GeneralPhotomesonModel(object):
 
         if 'alpha' not in kwargs:
             info(2, 'Default function chosen for assymptotic scaling of total cross section.')
-            def scaling_function(A, egrid):
-                """Returns the effective A which results from the ratio of nuclear
-                to nucleon total inelastic cross section. Based on Weise (1974).
-                Returns :math:`A(E) = A^{\alfa(E)}`
-
-                Assumes that Glauber regime :math:`A^{2/3}` is reached at 30 GeV.
-                NOTE: Temporarily implemented as :math:`\alpha(E) = 1 - 1/3*E/E_{max}`
-                """
-                E = egrid
-                Emax = egrid[-1]
-                # alpha = np.max(2./3., 1 - 1 / 3 * E / 30.)
-                alpha = 1 - 1 / 3 * E / Emax
-
-                return A**alpha
+            alpha = alpha_med
         else:
             info(2, 'Custom function chosen for assymptotic scaling of total cross section.')
             alpha = kwargs['alpha']
@@ -118,6 +108,12 @@ class GeneralPhotomesonModel(object):
 
             self.fade = fade
 
+        if 'pion_scaling' not in kwargs:
+            info(2, 'Using custom pion scaling function.')
+            self._load_pion_scaling_function()
+        else:
+            info(2, 'Using custom pion scaling function.')
+
         if ('multiplicity_source' in kwargs) and \
             kwargs['multiplicity_source'] == True:
             self._fill_multiplicity()
@@ -152,6 +148,35 @@ class GeneralPhotomesonModel(object):
             tck = pickle_load(f)
 
         self.univ_spl = UnivariateSpline._from_tck(tck)
+
+    def _load_pion_scaling_function(self):
+        """Returns the pion scaling function
+        """
+        from pickle import load as pickle_load
+        from scipy.interpolate import UnivariateSpline
+
+        uf_file = join(global_path, 'data/alphapi-spline.pkl')
+        with open(uf_file, 'r') as f:
+            tck = pickle_load(f)
+
+        def alphapi(energies):
+            """Returnes the scaling coefficient for pions as a function of energy
+            
+            Arguments
+            ---------
+            energies -- {array, float} energies where to evaluate, in GeV
+            """
+            tp1 = 10**(-.18)
+            tp2 = 10**(.55)
+            he_alphapi = UnivariateSpline._from_tck(tck, ext=3)  # ext='const'
+            api = 2./3 * np.ones_like(energies)
+            api[(tp1 < energies) * (energies < tp2)] = sigm(
+                np.log10(energies[(tp1 < energies) * (energies < tp2)]), .2, .25, 8, .65, True) 
+            api[tp2 <= energies] = he_alphapi(np.log10(energies[tp2 <= energies]))
+
+            return api
+
+        self.alphapi_spl = alphapi
 
     def _load_pion_function(self):
         """Returns the universal function on a fixed energy range
@@ -299,7 +324,7 @@ class GeneralPhotomesonModel(object):
 
                 return csec_diff
 
-            csec_diff = spm_incl_diff(product)
+            csec_diff = spm_incl_diff(product)  # initialize as in Single Particle Model
 
             if (species, product) in self.multiplicity:  # only p and n
                 xw = self.xwidths[-1]  # only on last x bin
@@ -315,7 +340,7 @@ class GeneralPhotomesonModel(object):
                 csec_diff[-1, :] += \
                     self.multiplicity[species, product] * cs_nonel / xw
 
-            elif self.pion_spl:  # only pions (product in [2, 3, 4])
+            elif self.pion_spl:  # only pions (product ID in [2, 3, 4])
                 csec_diff = spm_incl_diff(product)
 
                 csec_diff_ref = spm_incl_diff(4)
@@ -324,12 +349,12 @@ class GeneralPhotomesonModel(object):
 
                 cs_incl_prod = trapz(csec_diff, x=self.xcenters,
                               dx=bin_widths(self.xbins), axis=0)
-
-                csec_diff *= float(A)**(-1/3.)  # ... rescaling SpM to A^2/3
+                alphapi = self.alphapi_spl(self.egrid)
+                csec_diff *= A**(alphapi - 1.)  # rescaling Single Particle Model values to alphapi function
                 cs_incl = trapz(csec_diff, x=self.xcenters,
                               dx=bin_widths(self.xbins), axis=0)
 
-                cspi = self.pion_spl(self.egrid * 1e3)*A**(2./3)
+                cspi = self.pion_spl(self.egrid * 1e3)*A**alphapi # rescaling Single Particle Model values to alphapi function
 
                 renorm = cs_incl_prod / cs_incl_ref * cspi / cs_incl
                 csec_diff_renormed = csec_diff * renorm
@@ -341,7 +366,7 @@ class GeneralPhotomesonModel(object):
         return self.egrid, csec_diff
 
 
-class SuperpositionModel(GeneralPhotomesonModel):
+class SingleParticleModel(GeneralPhotomesonModel):
     """Implementation of the Superposition Model 
 
     The model uses cross sections for protons and neutrons obtained from 
@@ -393,7 +418,6 @@ class EmpiricalModel(GeneralPhotomesonModel):
     def _fill_multiplicity(self, *args, **kwargs):
         """Loads the data and creates the multiplicity table
         """
-        from phenom_relations import multiplicity_table
 
         self._nonel_tab = {100:(), 101:()}
         self._incl_tab = {}
