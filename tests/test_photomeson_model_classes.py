@@ -61,7 +61,7 @@ class Test_SingleParticleModel(unittest.TestCase):
                 cs_val = trapz(cs_val_diff, x=self.pm.xcenters,
                               dx=bin_widths(self.pm.xbins), axis=0)
                 if not np.all(cs == cs_val):
-                    print spec, prod
+                    print(spec, prod)
                 self.assertTrue(np.all(cs == cs_val))
 
     def test_incl_nuclei(self):
