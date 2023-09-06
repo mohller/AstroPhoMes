@@ -5,10 +5,12 @@ import numpy as np
 from scipy.interpolate import interp1d
 from os.path import join
 import sys
+import pickle
 sys.path.append('../')
 from config import *
 
-nsc = np.load(join(global_path, 'data/scaling_lines.npy'))
+with open(join(global_path, 'data/scaling_lines.npy'), 'rb') as scalingfile:
+    nsc = pickle.load(scalingfile, encoding='bytes')
 
 e = np.linspace(.1, 800, 300)
 
@@ -30,7 +32,7 @@ def low(x):
 
 def med(x):
     emid = np.linspace(600, 700, 21)
-    emid = np.array(range(600, 630, 10) + range(680, 720, 10))
+    emid = np.array(list(range(600, 630, 10)) + list(range(680, 720, 10)))
 
     ymid = np.where(emid < 650, np.interp(emid, nsc[0], nsc[1]), .66)
 

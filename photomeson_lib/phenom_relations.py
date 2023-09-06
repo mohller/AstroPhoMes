@@ -21,7 +21,7 @@ def list_species_by_mass(Amax, tau=inf):
 	to be produced in spallation.
 	'''
 	species = {}
-	for nuc in [k for k in sorted(spec_data.keys()) if isinstance(k, int)]:
+	for nuc in sorted([k for k in spec_data.keys() if isinstance(k, int)]):
 		if (nuc < 100) or (spec_data[nuc]['lifetime'] < tau):
 			continue
 		At, _, _ = get_AZN(nuc)
@@ -87,13 +87,13 @@ def residual_multiplicities():
 	residual_list = {}
 	count = 0
 	last = 0
-	print 'Completed.... ', 0
+	print('Completed.... ', 0)
 	cant = float(len(set(spalled_nucleons)))
 	for tot in set(spalled_nucleons):
 		count+=1
 		# print '--', tot, '--', '{:3.3f}'.format(count/cant)
 		if int(100 * count / cant) >= last + 5:
-			print 'Completed.... ', int(100 * count / cant)
+			print('Completed.... ', int(100 * count / cant))
 			last += 5
 		_, x, y = get_AZN(tot)
 		counts = Counter([e for elem in combinations(x, y) for e in elem])
@@ -110,13 +110,13 @@ def residual_multiplicities():
 # local lookup tables for efficiency
 species_by_mass = list_species_by_mass(56, tau_dec_threshold)
 if path.exists(path.join(global_path, 'data/small_frags_relative_yields.pkl')):
-	print('Found data file with multiplicities. Loeading it now...')
-	with open(path.join(global_path, 'data/small_frags_relative_yields.pkl'), 'r') as f:
+	print('Found data file with multiplicities. Loading multiplicities now...')
+	with open(path.join(global_path, 'data/small_frags_relative_yields.pkl'), 'rb') as f:
 		# it is faster to load a precomputed resmul than recalculating using 
 		# residual_multiplicities() as below
 		resmul = pickle.load(f)
 else:
-	print('Did not find data file with multiplicities. Loeading it now...')
+	print('Did not find data file with multiplicities. Computing multiplicities now...')
 	resmul = residual_multiplicities()
 	with open(path.join(global_path, 'data/small_frags_relative_yields.pkl'), 'w') as f:
 		resmul = pickle.dump(f)
@@ -258,21 +258,21 @@ def cs_gSp(Z, A, x=1, y=1):
 
 def cs_gSp_all(Z, A):
 	"""Cross section summed for all possible spallation events
-	"""	
+	"""
 	mother = 100*A + Z
 	cs_tot = 0
 	for A_big_frag in range(A/2, A-1):
-	    for big_frag in species_by_mass[A_big_frag]:
-	        _, x, y = get_AZN(mother - big_frag)
-	        spalled_id = 100*(x+y) + x
-	        
-	        if (x < 1) or (y < 1):
-	        	# in spallation at least a neutron and proton escape
-	            continue
-
-            cs_frag = cs_gSp(Z, A, x, y)
-            cs_tot += cs_frag
-
+		for big_frag in species_by_mass[A_big_frag]:
+			_, x, y = get_AZN(mother - big_frag)
+			spalled_id = 100*(x+y) + x
+			
+			if (x < 1) or (y < 1):
+				# in spallation at least a neutron and proton escape
+				continue
+			
+			cs_frag = cs_gSp(Z, A, x, y)
+			cs_tot += cs_frag
+			
 	return cs_tot
 
 
@@ -421,32 +421,32 @@ def spallation_multiplicities(mother):
 	of mothter species (moter is a neucos id) for spallation
 	'''
 	Am, Zm, _ = get_AZN(mother)
-	
+
 	incl_tab = {}
 	cs_sum = 0
 	for A_big_frag in range(Am/2, Am-1):
-	    for big_frag in species_by_mass[A_big_frag]:
-	        _, x, y = get_AZN(mother - big_frag)
-	        spalled_id = 100*(x+y) + x
-	        
-	        if (x < 1) or (y < 1):
-	        	# in spallation at least a neutron and proton escape
-	            continue
-        	
-	        cs_frag = cs_gSp(Zm, Am, x, y)
-	        cs_sum += cs_frag  # sum of all cross sections to normalize incl_tab
-	        
-	        if big_frag in incl_tab:
-	            incl_tab[big_frag] += cs_frag
-	        else:
-	            incl_tab[big_frag] = cs_frag
+		for big_frag in species_by_mass[A_big_frag]:
+			_, x, y = get_AZN(mother - big_frag)
+			spalled_id = 100*(x+y) + x
 
-	        # get low fragment incl_tab from using Counter on a prepared list with x, y outputs
-	        for dau in resmul[spalled_id]:
-	            if dau in incl_tab:
-	                incl_tab[dau] += cs_frag * resmul[spalled_id][dau]
-	            else:
-	                incl_tab[dau] = cs_frag * resmul[spalled_id][dau]
+			if (x < 1) or (y < 1):
+				# in spallation at least a neutron and proton escape
+				continue
+        	
+			cs_frag = cs_gSp(Zm, Am, x, y)
+			cs_sum += cs_frag  # sum of all cross sections to normalize incl_tab
+	        
+			if big_frag in incl_tab:
+				incl_tab[big_frag] += cs_frag
+			else:
+				incl_tab[big_frag] = cs_frag
+
+			# get low fragment incl_tab from using Counter on a prepared list with x, y outputs
+			for dau in resmul[spalled_id]:
+				if dau in incl_tab:
+					incl_tab[dau] += cs_frag * resmul[spalled_id][dau]
+				else:
+					incl_tab[dau] = cs_frag * resmul[spalled_id][dau]
 	for dau in incl_tab:
 		# all spallation cross section should match total spallation cross section
 		incl_tab[dau] /= where(cs_sum == 0, inf, cs_sum)
@@ -556,8 +556,8 @@ def multiplicity_table(mother):
 def main():
 	
 	# resmul = residual_multiplicities()
-	print resmul.keys()
-	print multiplicity_table(1407)
+	print(resmul.keys())
+	print(multiplicity_table(1407))
 
 if __name__ == '__main__':
 	main()

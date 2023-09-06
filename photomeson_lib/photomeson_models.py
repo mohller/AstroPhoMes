@@ -5,11 +5,11 @@ import numpy as np
 import sys
 from os.path import join
 
-sys.path.append('../')
 from config import *
+sys.path.append(global_path)
 from utils.utils import *
+from photomeson_lib.phenom_relations import *
 from utils.scaling_models_from_data import med as alpha_med
-from phenom_relations import *
 
 class GeneralPhotomesonModel(object):
     """Base class for all photomeson models which enhance the 
@@ -135,7 +135,7 @@ class GeneralPhotomesonModel(object):
 
         epsr_grid, self.xbins, self.redist_proton, self.redist_neutron = \
             np.load(join(global_path, 
-                         'data/sophia_redistribution_logbins.npy'))
+                         'data/sophia_redistribution_logbins.npy'), encoding='bytes', allow_pickle=True)
 
     def _load_universal_function(self):
         """Returns the universal function on a fixed energy range
@@ -144,8 +144,8 @@ class GeneralPhotomesonModel(object):
         from scipy.interpolate import UnivariateSpline
 
         uf_file = join(global_path, 'data/universal-spline.pkl')
-        with open(uf_file, 'r') as f:
-            tck = pickle_load(f)
+        with open(uf_file, 'rb') as f:
+            tck = pickle_load(f, encoding='bytes')
 
         self.univ_spl = UnivariateSpline._from_tck(tck)
 
@@ -156,8 +156,8 @@ class GeneralPhotomesonModel(object):
         from scipy.interpolate import UnivariateSpline
 
         uf_file = join(global_path, 'data/alphapi-spline.pkl')
-        with open(uf_file, 'r') as f:
-            tck = pickle_load(f)
+        with open(uf_file, 'rb') as f:
+            tck = pickle_load(f, encoding='bytes')
 
         def alphapi(energies):
             """Returnes the scaling coefficient for pions as a function of energy
@@ -185,13 +185,13 @@ class GeneralPhotomesonModel(object):
         from scipy.interpolate import UnivariateSpline
 
         uf_file = join(global_path, 'data/pion_spline.pkl')
-        with open(uf_file, 'r') as f:
-            tck = pickle_load(f)
+        with open(uf_file, 'rb') as f:
+            tck = pickle_load(f, encoding='bytes')
 
         self.pion_spl = UnivariateSpline._from_tck(tck)
     
     def _fill_idcs(self):
-        for mom in sorted(spec_data.keys()):
+        for mom in sorted([k for k in spec_data.keys() if isinstance(k, int)]):
             if (mom <= 101) or isinstance(mom, str) or \
                 (spec_data[mom]['lifetime'] < tau_dec_threshold):
                 continue
@@ -394,7 +394,7 @@ class SingleParticleModel(GeneralPhotomesonModel):
         multiplicity_table = {}
 
         for nucleus in spec_data:
-            if (nucleus < 200) or (type(nucleus) is str):
+            if isinstance(nucleus, str) or (nucleus < 200):
                 continue
             
             A, Z, N = get_AZN(nucleus)
@@ -428,8 +428,8 @@ class EmpiricalModel(GeneralPhotomesonModel):
                 self._incl_diff_tab[mom, dau] = ()
                 
         new_multiplicity = {}
-        for mom in sorted(spec_data.keys()):
-            if (mom <= 101) or isinstance(mom, str) or \
+        for mom in sorted([k for k in spec_data.keys() if isinstance(k, str)]):
+            if isinstance(mom, str) or (mom <= 101) or \
                 (spec_data[mom]['lifetime'] < tau_dec_threshold):
                 continue                          
             

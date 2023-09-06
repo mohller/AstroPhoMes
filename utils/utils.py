@@ -62,7 +62,7 @@ def info(min_dbg_level, *message):
 
     if min_dbg_level <= debug_level:
         message = [str(m) for m in message]
-        print caller_name() + " ".join(message)
+        print(caller_name() + " ".join(message))
 
 def get_AZN(nco_id):
     """Returns mass number :math:`A`, charge :math:`Z` and neutron
@@ -88,7 +88,6 @@ def bin_widths(bin_edges):
     edg = np.array(bin_edges)
 
     return np.abs(edg[1:, ...] - edg[:-1, ...])
-
 
 def sigm(x, shift=0., gap=1, speed=1, base=0., rising=False):
     """Models a general sigmoid with multiple parameters.
