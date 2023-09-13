@@ -32,9 +32,9 @@ The particle identification follows the convention below
 ## Dependencies:
 
 It has been tested with the following versions (it should also work with newer versions):
-- python 2.7.15
-- numpy 1.15.1
-- scipy 1.1.0
+- python 3.8+
+- numpy 1.23+
+- scipy 1.10+
 
 Additionally this code uses interaction tables generated with [SOPHIA](https://www.uibk.ac.at/projects/he-cosmic-sources/tools/sophia/index.html.en) and [TALYS](http://www.talys.eu). These tables can be updated or substituted by other tables containing the analogous information, provided they are in the same format.
 
