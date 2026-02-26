@@ -10,6 +10,7 @@ sys.path.append(global_path)
 from utils.utils import *
 from photomeson_lib.phenom_relations import *
 from utils.scaling_models_from_data import med as alpha_med
+from scipy.integrate import trapezoid as trapz
 
 class GeneralPhotomesonModel(object):
     """Base class for all photomeson models which enhance the 
@@ -272,8 +273,6 @@ class GeneralPhotomesonModel(object):
            Returns:
             (numpy.array, numpy.array): energy, cross section
         """
-        from scipy.integrate import trapz
-
         _, Z, N = get_AZN(species)
 
         if product in [2, 3, 4, 100, 101]:
@@ -299,8 +298,6 @@ class GeneralPhotomesonModel(object):
            Returns:
             (numpy.array, numpy.array): energy, cross section
         """
-        from scipy.integrate import trapz
-
         if species == 100:
             cgrid = self.cs_neutron_grid
             csec_diff = self.redist_neutron[product].T * cgrid
