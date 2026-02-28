@@ -11,7 +11,6 @@ from utils.utils import *
 from photomeson_lib.phenom_relations import *
 from utils.scaling_models_from_data import med as alpha_med
 from scipy.integrate import trapezoid as trapz
-from scipy.signal import convolve
 
 class GeneralPhotomesonModel(object):
     """Base class for all photomeson models which enhance the 
