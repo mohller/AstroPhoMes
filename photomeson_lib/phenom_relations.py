@@ -77,7 +77,7 @@ def residual_multiplicities():
 	spalled_nucleons = []
 	for Am in species_by_mass:
 		for mother in species_by_mass[Am]:
-			for A_big_frag in range(Am/2, Am-1):
+			for A_big_frag in range(Am//2, Am-1):
 				for big_frag in species_by_mass[A_big_frag]:
 					if big_frag % 100 > mother % 100:
 						continue
@@ -98,7 +98,7 @@ def residual_multiplicities():
 		_, x, y = get_AZN(tot)
 		counts = Counter([e for elem in combinations(x, y) for e in elem])
 		suma = 0
-		for k, v in counts.iteritems():
+		for k, v in counts.items():
 			suma += k * v
 		for k in counts:
 			counts[k] *= tot/float(suma)
@@ -261,7 +261,7 @@ def cs_gSp_all(Z, A):
 	"""
 	mother = 100*A + Z
 	cs_tot = 0
-	for A_big_frag in range(A/2, A-1):
+	for A_big_frag in range(A//2, A-1):
 		for big_frag in species_by_mass[A_big_frag]:
 			_, x, y = get_AZN(mother - big_frag)
 			spalled_id = 100*(x+y) + x
@@ -424,7 +424,7 @@ def spallation_multiplicities(mother):
 
 	incl_tab = {}
 	cs_sum = 0
-	for A_big_frag in range(Am/2, Am-1):
+	for A_big_frag in range(Am//2, Am-1):
 		for big_frag in species_by_mass[A_big_frag]:
 			_, x, y = get_AZN(mother - big_frag)
 			spalled_id = 100*(x+y) + x
@@ -490,7 +490,7 @@ def cs_Rincl(Z, A, yields):
 				cs_incl = cs_gp(Z)
 			elif (nn >= 1) and (nz >= 1):
 				cs_incl = cs_gSp(Z, A, nz, nn)
-				new_frag = 100 * Ared + Ared/2 - nz
+				new_frag = 100 * Ared + Ared//2 - nz
 				if new_frag > 0:
 					csilist.append(cs_incl)
 					nuclist.append(new_frag)				
@@ -501,12 +501,12 @@ def cs_Rincl(Z, A, yields):
 				nuclist.append(100 * (A - nn - nz) + Z - nz)
 				if sub_frags:
 					suma = 0
-					for nuc, val in sub_frags.iteritems():
+					for nuc, val in sub_frags.items():
 						Af, _, _ = get_AZN(nuc)
 						suma += Af * val
 					norm = Ared / suma
 
-					for nuc, val in sub_frags.iteritems():
+					for nuc, val in sub_frags.items():
 						if nuc in nuclist:
 							csilist[nuclist.index(nuc)] += val * norm * cs_incl
 						else:
@@ -538,13 +538,13 @@ def multiplicity_table(mother):
 					  mother - 100: 1.*csn/cs_tot,
 					  mother - 101: 1.*csp/cs_tot,}
 
-	for dau, mult in gxn_mult.iteritems():
+	for dau, mult in gxn_mult.items():
 		if dau in multiplicities:
 			multiplicities[dau] += mult * csxn / cs_tot
 		else:
 			multiplicities[dau] = mult * csxn / cs_tot
 
-	for dau, mult in sp_mult.iteritems():
+	for dau, mult in sp_mult.items():
 		if dau in multiplicities:
 			multiplicities[dau] += mult * csSp / cs_tot
 		else:

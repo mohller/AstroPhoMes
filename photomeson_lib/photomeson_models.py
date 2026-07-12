@@ -425,13 +425,13 @@ class EmpiricalModel(GeneralPhotomesonModel):
                 self._incl_diff_tab[mom, dau] = ()
                 
         new_multiplicity = {}
-        for mom in sorted([k for k in spec_data.keys() if isinstance(k, str)]):
+        for mom in sorted([k for k in spec_data.keys() if isinstance(k, int)]):
             if isinstance(mom, str) or (mom <= 101) or \
                 (spec_data[mom]['lifetime'] < tau_dec_threshold):
-                continue                          
-            
+                continue
+
             mults = multiplicity_table(mom)
-            dau_list, csincl_list = zip(*((k, v) for k, v in mults.iteritems()))
+            dau_list, csincl_list = zip(*((k, v) for k, v in mults.items()))
             
             self._nonel_tab[mom] = ()
             for dau in [2, 3, 4]:
@@ -441,7 +441,7 @@ class EmpiricalModel(GeneralPhotomesonModel):
             self._incl_diff_tab[mom, 100] = cs_gn(A) / cs_tot(A, False)
             self._incl_diff_tab[mom, 101] = cs_gp(Z) / cs_tot(A, False)
             
-            for dau, mult in mults.iteritems():
+            for dau, mult in mults.items():
                 new_multiplicity[mom, dau] = mult
                 self._incl_tab[mom, dau] = np.array([])
             
