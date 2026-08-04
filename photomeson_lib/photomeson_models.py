@@ -12,6 +12,9 @@ from photomeson_lib.phenom_relations import *
 from utils.scaling_models_from_data import med as alpha_med
 from scipy.integrate import trapezoid as trapz
 
+_EMPTY = np.array([])
+
+
 class GeneralPhotomesonModel(object):
     """Base class for all photomeson models which enhance the 
     Superposition Model
@@ -192,21 +195,28 @@ class GeneralPhotomesonModel(object):
         self.pion_spl = UnivariateSpline._from_tck(tck)
     
     def _fill_idcs(self):
-        for mom in sorted([k for k in spec_data.keys() if isinstance(k, int)]):
-            if (mom <= 101) or isinstance(mom, str) or \
-                (spec_data[mom]['lifetime'] < tau_dec_threshold):
-                continue
-            
-            if mom not in self.nonel_idcs:
-                self.nonel_idcs.append(mom)
+        # group the multiplicity table by mother once: rescanning it per mother
+        # is quadratic, and above iron the table runs to a million channels
+        daughters = {}
+        for mom, dau in self.multiplicity:
+            daughters.setdefault(mom, []).append(dau)
 
-            for dau in (d for m,d in self.multiplicity if m == mom):
-                if (mom, dau) not in self.incl_diff_idcs:
+        nonel_seen = set(self.nonel_idcs)
+        incl_diff_seen = set(self.incl_diff_idcs)
+
+        for mom in modelled_species():
+            if mom not in nonel_seen:
+                self.nonel_idcs.append(mom)
+                nonel_seen.add(mom)
+
+            for dau in daughters.get(mom, ()):
+                if (mom, dau) not in incl_diff_seen:
                     self.incl_idcs.append((mom, dau))
 
             for dau in [2, 3, 4, 100, 101]:
-                if (mom, dau) not in self.incl_diff_idcs:
+                if (mom, dau) not in incl_diff_seen:
                     self.incl_diff_idcs.append((mom, dau))
+                    incl_diff_seen.add((mom, dau))
 
         if self.incl_idcs == []:
             for mom in self.nonel_idcs:
@@ -390,10 +400,7 @@ class SingleParticleModel(GeneralPhotomesonModel):
         """
         multiplicity_table = {}
 
-        for nucleus in spec_data:
-            if isinstance(nucleus, str) or (nucleus < 200):
-                continue
-            
+        for nucleus in modelled_species():
             A, Z, N = get_AZN(nucleus)
 
             multiplicity_table[nucleus, nucleus - 100] = N/float(A)
@@ -425,14 +432,9 @@ class EmpiricalModel(GeneralPhotomesonModel):
                 self._incl_diff_tab[mom, dau] = ()
                 
         new_multiplicity = {}
-        for mom in sorted([k for k in spec_data.keys() if isinstance(k, int)]):
-            if isinstance(mom, str) or (mom <= 101) or \
-                (spec_data[mom]['lifetime'] < tau_dec_threshold):
-                continue
-
+        for mom in modelled_species():
             mults = multiplicity_table(mom)
-            dau_list, csincl_list = zip(*((k, v) for k, v in mults.items()))
-            
+
             self._nonel_tab[mom] = ()
             for dau in [2, 3, 4]:
                 self._incl_diff_tab[mom, dau] = ()
@@ -443,7 +445,9 @@ class EmpiricalModel(GeneralPhotomesonModel):
             
             for dau, mult in mults.items():
                 new_multiplicity[mom, dau] = mult
-                self._incl_tab[mom, dau] = np.array([])
+                # a placeholder, only its presence is read; above iron there are
+                # a million of these, so they all share the one array
+                self._incl_tab[mom, dau] = _EMPTY
             
         # Sophia cross section are loaded by now, and they are used to build all the tabs
         self.multiplicity = new_multiplicity
