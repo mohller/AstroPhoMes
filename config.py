@@ -32,6 +32,24 @@ max_A = None  # maximum mass of the model. None means the nuclide table decides
 # redistributed, since Eqs. (A.4)-(A.9) are absolute predictions and not shares.
 cs_gSp_min_A = 8
 
+# How the light fragment combinations of a spalled group are counted.
+#
+#   False -- a combination is the multiset of species it contains, so (t, He3)
+#            and (He3, t) are one combination.  This is Eq. (A.13) of the paper,
+#            which specifies a combination by its per species counts, and it is
+#            what the model was meant to do.
+#   True  -- combinations are told apart by the order of the parts within a mass
+#            class, which is what the published enumeration did: it ran
+#            itertools.product over an ordered list of part masses.  Reproduces
+#            data/small_frags_relative_yields.pkl and the published tables.
+#
+# The two differ wherever a mass class holds more than one species, and the
+# normalization does not absorb it: ordering favours those classes, moving the
+# relative yields by up to a factor 1.9.  Only the light fragments are affected;
+# <dA>, the mass budget and the heavy residual channels are identical either
+# way.  See ResidualMultiplicities.
+ordered_combinations = False
+
 # Which nuclide table backs spec_data:
 #   'nubase' -- data/nubase2020.txt, cut down by the selection below.  Covers
 #               the whole chart, which is what the model needs above iron.
