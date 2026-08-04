@@ -211,9 +211,10 @@ class Test_NuclideTable(unittest.TestCase):
         self.assertTrue(max(species_by_mass) >= 208)
 
     def test_provenance_is_recorded(self):
-        """The table says where it came from and that it extrapolates."""
+        """The table says where it came from and what it does not cover."""
         self.assertIn('NUBASE', nuclide_table_provenance)
-        self.assertIn('EXTRAPOLATION', nuclide_table_provenance)
+        self.assertIn('CAVEAT', nuclide_table_provenance)
+        self.assertIn('FISSION', nuclide_table_provenance)
 
     def test_nuclide_table_matches_spec_data(self):
         """The plain text table and the loaded dictionary agree."""
@@ -272,7 +273,7 @@ class Test_EmpiricalRelationsAboveIron(unittest.TestCase):
 
         Not exactly 100%: the empirical relations are independent fits, so the
         residual and the fragments do not close the mass budget exactly. Fe-56
-        gives 0.948, and the extrapolation must not drift away from that.
+        gives 0.948, and the widened range must not drift away from that.
 
         Only where spallation applies. Below cs_gSp_min_A the fragments carry
         far less, because the share of the total that Eq. (A.10) would call

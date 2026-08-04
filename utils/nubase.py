@@ -170,13 +170,26 @@ def select(nuclides, tau_min=2., amax=None, zmax=None, crpropa=None):
 
 
 CAVEAT = """\
-CAVEAT -- above A = 56 the empirical photomeson model is EXTRAPOLATION, not
-validated physics.  cs_gSp, the Rudstam-type spallation formula, is documented
-for A <= 90; cs_gpi, cs_gn and cs_gxn were fitted on data up to iron; and the
-mass scaling exponents alpha and alpha_pi were calibrated on the same range,
-though the universal function itself is fitted to nuclear photoabsorption data
-that does extend to heavy nuclei.  Tables generated from nuclides above A = 56
-must be labelled as superheavy extrapolations by their consumers.
+CAVEAT -- what going above A = 56 does and does not mean.
+
+The empirical relations themselves are not being extrapolated in mass.  They are
+reproduced from Terranova and Tavares, Physica Scripta 49 (1994) 267, whose
+subject is the total photoabsorption cross section "for nuclei throughout the
+periodic table", and the restriction the model's own paper states on them is on
+PHOTON ENERGY, 0.2 to 1 GeV, not on mass.  The universal function is fitted to
+photoabsorption data spanning A = 7 to 208.  The A = 56 ceiling was a property
+of the nuclide table the code shipped with, not of the physics in it.
+
+What is genuinely missing above iron is FISSION.  The model's paper excludes it
+in appendix A.1 -- "for the nuclei considered in this work (mass up to 56Fe)
+this process has no values or experimental data, but needs to be included for
+much higher masses" -- so heavy nuclei here disintegrate only by the channels
+listed, with no fission branch at all.
+
+Two further limits worth recording rather than assuming away: the model as
+published was compared against data and against Fluka for A <= 56, so its
+agreement at higher mass is untested; and cs_gSp carries its own documented
+ceiling of A = 90, which is well below lead.
 
 The lifetime cut also shapes the results.  Spallation residuals have to be
 nuclides of this selection, so close to the drip lines, where the neighbours of
