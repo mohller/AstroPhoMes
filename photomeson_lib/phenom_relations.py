@@ -7,24 +7,30 @@ sections for the Empirical Photomeson Model.
 """
 
 import itertools
-import os.path as path
 from collections import Counter
-from numpy import exp, sum, array, inf, linspace, where
+from numpy import exp, sum, inf, where, zeros, arange
 import sys
 sys.path.append('../')
 from config import *
 from utils.utils import get_AZN
 
-# listing functions to create tables of nuclear species 
-def list_species_by_mass(Amax, tau=inf):
+# listing functions to create tables of nuclear species
+def list_species_by_mass(Amax=None, tau=inf):
 	'''Returns a dictionary with the species stable enough
 	to be produced in spallation.
+
+	Arguments:
+		Amax {int}   -- if given, nuclides heavier than this are left out
+		tau {float}  -- minimum lifetime, in seconds, for a species to count
 	'''
 	species = {}
 	for nuc in sorted([k for k in spec_data.keys() if isinstance(k, int)]):
 		if (nuc < 100) or (spec_data[nuc]['lifetime'] < tau):
 			continue
 		At, _, _ = get_AZN(nuc)
+
+		if (Amax is not None) and (At > Amax):
+			continue
 
 		if At in species:
 			species[At].append(nuc)
@@ -34,92 +40,222 @@ def list_species_by_mass(Amax, tau=inf):
 	return species
 
 
-def partitions(n):
-	"""Returns all integer combinations that add up to n
-	and no summand is higher than 4
-	"""	
-	# base case of recursion: zero is the sum of the empty list
-	if n == 0:
-		yield []
-		return
-		
-	# modify partitions of n-1 to form partitions of n
-	for p in partitions(n-1):
-		yield [1] + p
-		if p and (len(p) < 2 or p[1] > p[0]):
-			if p[0] < 4:
-				yield [p[0] + 1] + p[1:]
+def modelled_species(Amax=None, tau=None):
+	'''Returns the sorted ids of the nuclides the photomeson models describe.
 
-
-def combinations(x, y):
-	'''Returns possible combinations of nuclei with mass A<=4
-	such that they contain x protons and y neutrons.
+	Nucleons and lighter particles are left out: they are covered by the SOPHIA
+	tables rather than by the empirical relations. Defaults come from config, so
+	that max_A caps every sweep over the nuclide table in the same way.
 	'''
-	ncos_id = int((x + y)*100 + x)
-	mass_partitions = partitions(x + y)
+	if Amax is None:
+		Amax = max_A
+	if tau is None:
+		tau = tau_dec_threshold
 
-	for mass_partition in mass_partitions:
-		mass_partition = [f for f in mass_partition if f > 1]
-		species = [species_by_mass[Af] for Af in mass_partition if Af in species_by_mass]
-		for c in list(itertools.product(*species)):
-			_, z, n = get_AZN(sum(c))
-			if (z <= x) and (n <= y):
-				yield int(y-n)*(100, ) + int(x-z)*(101, ) + c
+	species = []
+	for nuc in sorted([k for k in spec_data.keys() if isinstance(k, int)]):
+		if (nuc <= 101) or (spec_data[nuc]['lifetime'] < tau):
+			continue
+		if (Amax is not None) and (get_AZN(nuc)[0] > Amax):
+			continue
+		species.append(nuc)
+
+	return species
 
 
-def residual_multiplicities():
-	'''Makes a dictionary where the ncos id with x,y number of protons and 
-	neutrons emitted are the keys, and the multiplicities of species between A=1-4
-	are given, normalized such that they add up to x protons and y neutrons.
-	This is a function to precompute the table which is used to find the multiplicities
-	of the empirical photomeson model.
+def light_fragment_classes(species=None):
+	'''Groups the bound fragments of mass 2 to 4 by mass number.
+
+	Returns {A: [(nco_id, Z, N), ...]}, read from the nuclide table so that the
+	fragment basis follows whatever selection config.py loaded rather than being
+	hardcoded. With a physically sensible selection this is CRPropa's basis,
+	d, t, He3 and He4, plus the free nucleons handled separately below.
 	'''
-	spalled_nucleons = []
-	for Am in species_by_mass:
-		for mother in species_by_mass[Am]:
-			for A_big_frag in range(Am//2, Am-1):
-				for big_frag in species_by_mass[A_big_frag]:
-					if big_frag % 100 > mother % 100:
-						continue
-					spalled_frag = mother - big_frag
-					spalled_nucleons.append(spalled_frag)
-					# print spalled_nucleons[-1]
-	residual_list = {}
-	count = 0
-	last = 0
-	print('Completed.... ', 0)
-	cant = float(len(set(spalled_nucleons)))
-	for tot in set(spalled_nucleons):
-		count+=1
-		# print '--', tot, '--', '{:3.3f}'.format(count/cant)
-		if int(100 * count / cant) >= last + 5:
-			print('Completed.... ', int(100 * count / cant))
-			last += 5
-		_, x, y = get_AZN(tot)
-		counts = Counter([e for elem in combinations(x, y) for e in elem])
+	if species is None:
+		species = species_by_mass
+
+	classes = {}
+	for Af in (2, 3, 4):
+		fragments = [(nuc,) + get_AZN(nuc)[1:] for nuc in species.get(Af, ())]
+		if fragments:
+			classes[Af] = fragments
+
+	return classes
+
+
+def _accumulate(grid, fragments):
+	'''In place grid[Z, N] += sum_s grid[Z - Z_s, N - N_s] over the fragments.
+
+	Sweeping in increasing (Z, N) lets each updated cell feed back into the sums
+	of the cells after it, so a single pass turns grid into grid / (1 - P),
+	where P is the generating polynomial sum_s z^Z_s w^N_s of the fragments.
+	That is the geometric series over any number of them.
+	'''
+	for Z in range(grid.shape[0]):
+		for N in range(grid.shape[1]):
+			total = grid[Z, N]
+			for _, Zs, Ns in fragments:
+				if (Z >= Zs) and (N >= Ns):
+					total += grid[Z - Zs, N - Ns]
+			grid[Z, N] = total
+
+
+class ResidualMultiplicities(dict):
+	'''Yields of the light fragments produced together with a spallation residue.
+
+	Keyed by the nco id of the spalled nucleon group, each entry gives the
+	expected number of each species of mass 1 to 4, normalized so that they
+	account for exactly the x protons and y neutrons that left the nucleus.
+
+	The original model obtained these by enumerating, for every partition of
+	x + y into parts of at most 4, every assignment of species to the parts, and
+	counting how often each species came up. That enumeration grows like
+	2^((x+y)/3) and is too slow above iron: A = 208 spalls up to 104 nucleons.
+
+	However, the expected counts required scale polynomially. Writing
+	P_A for the generating polynomial of the fragments of mass A, the number of
+	assignments with total charge Z and neutron number N is the coefficient of
+
+		T = 1 / ((1 - P_2) (1 - P_3) (1 - P_4)),
+
+	and the number of them containing a given fragment of mass A, counted with
+	multiplicity, is the coefficient of that fragment's monomial times
+
+		U_A = T / (1 - P_A).
+
+	The original code used enumerated each partition of x + y as a LIST of part 
+	masses, collected the candidate species for every position in that list, and 
+	ran itertools.product over them. For the partition [3, 3, 2] that is
+	product(S_3, S_3, S_2), which yields (t, He3, d) and (He3, t, d) as two
+	separate tuples. Counter then tallied species across every tuple, so both 
+	were counted.
+
+	The normalization below is a common rescaling and so does not absorb the
+	difference. Ordering favours the classes with more species, and the relative
+	yields move accordingly: spalling (x, y) = (12, 20) gives 1.9 times as much
+	He3 and half as much He4 as the unordered reading would.
+
+	Ordered is the published behaviour, and reproducing the shipped
+	data/small_frags_relative_yields.pkl requires it. However, Eq. (A.13) of the 
+	paper specifies a combination by its per species counts, which reads as 
+	unordered.
+
+	Both arrays are built once over the whole (Z, N) grid, since neither depends
+	on x or y; a query is then a sum over the box Z <= x, N <= y, and the free
+	protons and neutrons that pad every assignment out to (x, y) come from the
+	same box weighted by (x - Z) and (y - N).
+	'''
+
+	def __init__(self, species=None, Zmax=None, Nmax=None, ordered=None):
+		dict.__init__(self)
+
+		if species is None:
+			species = species_by_mass
+		if ordered is None:
+			ordered = ordered_combinations
+		self.species = species
+		self.ordered = ordered
+		self.classes = light_fragment_classes(species)
+
+		# one geometric series per mass class counts the assignments to its
+		# parts in order; one per species counts them as multisets instead
+		if ordered:
+			self.groups = [(Af, self.classes[Af]) for Af in sorted(self.classes)]
+		else:
+			self.groups = [(frag[0], [frag]) for Af in sorted(self.classes)
+						   for frag in self.classes[Af]]
+
+		if (Zmax is None) or (Nmax is None):
+			nuclides = [nuc for Af in species for nuc in species[Af]]
+			charges = [get_AZN(nuc)[1] for nuc in nuclides]
+			neutrons = [get_AZN(nuc)[2] for nuc in nuclides]
+			Zmax = max(charges) if Zmax is None else Zmax
+			Nmax = max(neutrons) if Nmax is None else Nmax
+
+		self._build(Zmax, Nmax)
+
+	def _build(self, Zmax, Nmax):
+		'''Tabulates the assignment counts over the (Z, N) grid.'''
+		self.Zmax, self.Nmax = Zmax, Nmax
+
+		combinations = zeros((Zmax + 1, Nmax + 1))
+		combinations[0, 0] = 1.
+		for _, fragments in self.groups:
+			_accumulate(combinations, fragments)
+
+		expected = {}
+		for key, fragments in self.groups:
+			expected[key] = combinations.copy()
+			_accumulate(expected[key], fragments)
+
+		self.combinations, self.expected = combinations, expected
+		self.clear()
+
+	def _grow(self, x, y):
+		'''Rebuilds on a wider grid if a query falls outside the current one.'''
+		if (x > self.Zmax) or (y > self.Nmax):
+			self._build(max(x, self.Zmax), max(y, self.Nmax))
+
+	def counts(self, x, y):
+		'''Expected yields when x protons and y neutrons are spalled off.'''
+		counts = Counter()
+		if (x < 0) or (y < 0):
+			# unphysical spalled groups do occur as intermediate keys, and the
+			# enumeration they replace produced nothing for them either
+			return counts
+
+		self._grow(x, y)
+
+		for key, fragments in self.groups:
+			expected = self.expected[key]
+			for nuc, Zs, Ns in fragments:
+				if (Zs > x) or (Ns > y):
+					continue
+				value = expected[:x - Zs + 1, :y - Ns + 1].sum()
+				if value:
+					counts[nuc] += value
+
+		box = self.combinations[:x + 1, :y + 1]
+		free_protons = (box * (x - arange(x + 1))[:, None]).sum()
+		free_neutrons = (box * (y - arange(y + 1))[None, :]).sum()
+		if free_protons:
+			counts[101] = free_protons
+		if free_neutrons:
+			counts[100] = free_neutrons
+
+		# normalization of the published model: the yields are rescaled so that
+		# the ids they carry add up to the id of the spalled group, that is, so
+		# that they account for exactly x protons and y neutrons
 		suma = 0
 		for k, v in counts.items():
 			suma += k * v
-		for k in counts:
-			counts[k] *= tot/float(suma)
-		residual_list[tot] = counts.copy()
+		if suma:
+			ncos_id = 100 * (x + y) + x
+			for k in counts:
+				counts[k] *= ncos_id / float(suma)
 
-	return residual_list
+		return counts
+
+	def __missing__(self, ncos_id):
+		_, x, y = get_AZN(ncos_id)
+		self[ncos_id] = self.counts(x, y)
+
+		return self[ncos_id]
+
+
+def residual_multiplicities(species=None):
+	'''Returns the table of light fragment yields keyed by spalled nco id.
+
+	The table fills itself on demand, so it costs nothing for the nuclides a
+	given run never touches and never needs regenerating when the nuclide
+	selection changes.
+	'''
+	return ResidualMultiplicities(species)
 
 
 # local lookup tables for efficiency
-species_by_mass = list_species_by_mass(56, tau_dec_threshold)
-if path.exists(path.join(global_path, 'data/small_frags_relative_yields.pkl')):
-	print('Found data file with multiplicities. Loading multiplicities now...')
-	with open(path.join(global_path, 'data/small_frags_relative_yields.pkl'), 'rb') as f:
-		# it is faster to load a precomputed resmul than recalculating using 
-		# residual_multiplicities() as below
-		resmul = pickle.load(f)
-else:
-	print('Did not find data file with multiplicities. Computing multiplicities now...')
-	resmul = residual_multiplicities()
-	with open(path.join(global_path, 'data/small_frags_relative_yields.pkl'), 'w') as f:
-		resmul = pickle.dump(f)
+species_by_mass = list_species_by_mass(max_A, tau_dec_threshold)
+resmul = residual_multiplicities()
 
 
 #### empirical relations from Ref...
@@ -225,32 +361,43 @@ def cs_gp(Z=1, **kwargs):
 
 def cs_gSp(Z, A, x=1, y=1):
 	"""Cross section for spallation averaged over E[.2, 1.] GeV
-	
+
 	Returns cross section of photoproduction of multiple
 	protons and neutrons in a spallation procees, averaged
 	over the energy range [.2, 1.] GeV, in milibarn units.
-	
+
+	Eq. (A.8) of Morejon et al., JCAP 11 (2019) 007.  The reaction it describes
+	loses x > 1 protons and y > 1 neutrons while leaving a residual of mass
+	A_r >= A/2, so at least four nucleons have to depart and at most half the
+	nucleus may: below cs_gSp_min_A = 8 there is no such reaction and the
+	formula returns zero.  It is not merely small there, it is undefined --
+	E = 446/A leaves the range where the fitted parameters vary at all, cs_M
+	sticking at 0.248 below A = 21 and B at 0.25 below A = 45.
+
 	Arguments:
 		Z {int} -- Number of protons of the target nucleus
 		A {int} -- Number of nucleons of the target nucleus
-		           A <= 90
+		           cs_gSp_min_A <= A <= 90
 		x {int} -- Number of protons produced. Default is 1.
 		           1 <= x <= Z/2
 		y {int} -- Number of neutron produced. Default is 1.
 		           1 <= y <= (A - Z)/2
 
 	"""
+	if A < cs_gSp_min_A:
+		return 0.
+
 	K = 0.466
 	a = float(Z) / (A - Z)
 	C = 2.3 * a - 1.044
 	E = 446. / A
 	if E < 21.:
 		cs_M = 15.7 / E**1.356
-	elif 21. < E:
+	else:
 		cs_M = 0.248
 	if E < 10.:
 		B = 3.03 / E**1.06
-	elif E > 10.:
+	else:
 		B = 0.25
 
 	return cs_M * exp(-B * (x - 1) - K*(x - C*a*y)**2)
@@ -262,7 +409,7 @@ def cs_gSp_all(Z, A):
 	mother = 100*A + Z
 	cs_tot = 0
 	for A_big_frag in range(A//2, A-1):
-		for big_frag in species_by_mass[A_big_frag]:
+		for big_frag in species_by_mass.get(A_big_frag, ()):
 			_, x, y = get_AZN(mother - big_frag)
 			spalled_id = 100*(x+y) + x
 			
@@ -279,17 +426,15 @@ def cs_gSp_all(Z, A):
 def cs_gSp_all_inA(A):
     """Cross section summed for all possible spallation events
     """
-    n = 0
-    cs_summed = 0
     cs_vals = []
-    if A in species_by_mass:
-        for nuc in species_by_mass[A]:
-            A, Z, N = get_AZN(nuc)        
-            cs_summed = cs_gSp_all(Z, A)
-            cs_vals.append(cs_gSp_all(Z, A))
-            n += 1
-    
-    # return cs_summed / n
+    for nuc in species_by_mass.get(A, ()):
+        _, Zi, _ = get_AZN(nuc)
+        cs_vals.append(cs_gSp_all(Zi, A))
+
+    if not cs_vals:
+        # no bound nuclide of this mass, so nothing can spall off one
+        return 0.
+
     return max(cs_vals)
 
 
@@ -424,29 +569,37 @@ def spallation_multiplicities(mother):
 
 	incl_tab = {}
 	cs_sum = 0
+
+	if Am < cs_gSp_min_A:
+		# no spallation channel exists this light, see cs_gSp.  Returning early
+		# rather than letting the zero cross sections through keeps daughters
+		# with a multiplicity of exactly zero out of the tables
+		return incl_tab
+
 	for A_big_frag in range(Am//2, Am-1):
-		for big_frag in species_by_mass[A_big_frag]:
+		for big_frag in species_by_mass.get(A_big_frag, ()):
 			_, x, y = get_AZN(mother - big_frag)
 			spalled_id = 100*(x+y) + x
 
 			if (x < 1) or (y < 1):
 				# in spallation at least a neutron and proton escape
 				continue
-        	
+
 			cs_frag = cs_gSp(Zm, Am, x, y)
 			cs_sum += cs_frag  # sum of all cross sections to normalize incl_tab
-	        
+
 			if big_frag in incl_tab:
 				incl_tab[big_frag] += cs_frag
 			else:
 				incl_tab[big_frag] = cs_frag
 
 			# get low fragment incl_tab from using Counter on a prepared list with x, y outputs
-			for dau in resmul[spalled_id]:
+			spalled_mult = resmul[spalled_id]
+			for dau in spalled_mult:
 				if dau in incl_tab:
-					incl_tab[dau] += cs_frag * resmul[spalled_id][dau]
+					incl_tab[dau] += cs_frag * spalled_mult[dau]
 				else:
-					incl_tab[dau] = cs_frag * resmul[spalled_id][dau]
+					incl_tab[dau] = cs_frag * spalled_mult[dau]
 	for dau in incl_tab:
 		# all spallation cross section should match total spallation cross section
 		incl_tab[dau] /= where(cs_sum == 0, inf, cs_sum)
@@ -531,7 +684,14 @@ def multiplicity_table(mother):
 	csn = cs_gn(Am)
 	csxn = cs_gxn_all(Am)
 	cs_tot = .28 * Am
-	csSp = cs_tot - (cspi + csp + csn + csxn)
+	if Am < cs_gSp_min_A:
+		# Eq. (A.10) reads the remainder of the total as spallation, but there
+		# is no spallation this light.  It stays unattributed: the other
+		# relations are absolute cross sections, not shares of the total, so
+		# there is nothing to give it to
+		csSp = 0.
+	else:
+		csSp = cs_tot - (cspi + csp + csn + csxn)
 
 	multiplicities = {100: 1.*csn/cs_tot,
 					  101: 1.*csp/cs_tot,
@@ -554,10 +714,10 @@ def multiplicity_table(mother):
 
 
 def main():
-	
-	# resmul = residual_multiplicities()
-	print(resmul.keys())
+
+	print('light fragment basis:', light_fragment_classes())
 	print(multiplicity_table(1407))
+	print('spalled groups evaluated so far:', sorted(resmul.keys()))
 
 if __name__ == '__main__':
 	main()
