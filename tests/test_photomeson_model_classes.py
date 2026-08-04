@@ -43,7 +43,7 @@ class Test_SingleParticleModel(unittest.TestCase):
         """
             Test that nonel works
         """
-        from scipy.integrate import trapz
+        from scipy.integrate import trapezoid as trapz
 
         cs_proton = self.pm.cs_proton_grid
         cs_neutron = self.pm.cs_neutron_grid
@@ -71,11 +71,13 @@ class Test_SingleParticleModel(unittest.TestCase):
         cs_proton = self.pm.cs_proton_grid
         cs_neutron = self.pm.cs_neutron_grid
 
-        e, cs = self.pm.cs_incl(502, 402)
-        cs_val = 3./5*(3 * cs_neutron + 2 * cs_proton)
+        # Li-6 rather than He-5: the superposition arithmetic under test is the
+        # same, but He-5 is unbound and no physical nuclide table carries it
+        e, cs = self.pm.cs_incl(603, 503)
+        cs_val = 3./6*(3 * cs_neutron + 3 * cs_proton)
 
         self.assertTrue(np.all(cs == cs_val))
-                
+
         e, cs = self.pm.cs_incl(704, 603)
         cs_val = 4./7*(3 * cs_neutron + 4 * cs_proton)
         self.assertTrue(np.all(cs == cs_val))
